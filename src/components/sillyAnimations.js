@@ -1,5 +1,5 @@
 /**
- * Chalet Zahler — Silly Animations Suite
+ * Chalet Alpenrose — Silly Animations Suite
  * Bauhaus-inspired pixel animations with anime.js:
  * 1. Thunderstorm ("Thunersee Sommergewitter")
  * 2. Rocket Launch ("Gipfelstürmer")
@@ -21,7 +21,7 @@ export { playSwanCelebration, playRocketCelebration, playConfettiCelebration };
  */
 export function playThunderstormAnimation({
   text = 'DONNERWETTER!',
-  subtext = 'Sommergewitter über dem Chalet Zahler'
+  subtext = 'Sommergewitter über dem Chalet Alpenrose'
 } = {}) {
   return new Promise((resolve) => {
     const existing = document.getElementById('silly-thunderstorm-overlay');
@@ -325,7 +325,7 @@ export function playRandomSillyAnimation() {
 
   const presets = {
     thunderstorm: [
-      { text: 'DONNERWETTER!', subtext: 'Sommergewitter über dem Chalet Zahler' },
+      { text: 'DONNERWETTER!', subtext: 'Sommergewitter über dem Chalet Alpenrose' },
       { text: 'BLITZ & DONNER!', subtext: 'Naturerlebnis am Thunersee' }
     ],
     rocket: [
@@ -346,7 +346,7 @@ export function playRandomSillyAnimation() {
     ]
   };
 
-  const pool = presets[choice.id] || [{ text: choice.name, subtext: 'Chalet Zahler — Thunersee' }];
+  const pool = presets[choice.id] || [{ text: choice.name, subtext: 'Chalet Alpenrose — Thunersee' }];
   const pickedText = pool[Math.floor(Math.random() * pool.length)];
 
   return choice.play(pickedText);

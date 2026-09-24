@@ -17,9 +17,9 @@ import { addDays } from './dateUtils.js';
 export function generateWorkingDayICS({ dateISO, season, creatorName = 'Familie' }) {
   const isSpring = season === 'spring';
   const title = isSpring ? 'Arbeitstag: Frühjahrsputz' : 'Arbeitstag: Einwintern';
-  const summary = `${title} (Chalet Zahler)`;
-  const description = `Gemeinsamer Arbeitstag im Chalet Zahler (Thunersee) zum ${isSpring ? 'Frühjahrsputz & Saisoneröffnung' : 'Einwintern & Saisonabschluss'}. Angesetzt von ${creatorName}.`;
-  const location = 'Chalet Zahler, Thunersee';
+  const summary = `${title} (Chalet Alpenrose)`;
+  const description = `Gemeinsamer Arbeitstag im Chalet Alpenrose (Thunersee) zum ${isSpring ? 'Frühjahrsputz & Saisoneröffnung' : 'Einwintern & Saisonabschluss'}. Angesetzt von ${creatorName}.`;
+  const location = 'Chalet Alpenrose, Thunersee';
 
   // Format date as YYYYMMDD
   const dtStart = dateISO.replace(/-/g, '');
@@ -55,7 +55,7 @@ export function generateWorkingDayICS({ dateISO, season, creatorName = 'Familie'
 /**
  * Trigger download of an ICS calendar file
  *
- * @param {string} filename - e.g. "arbeitstag-chalet-zahler.ics"
+ * @param {string} filename - e.g. "arbeitstag-chalet-alpenrose.ics"
  * @param {string} icsContent
  */
 export function downloadICSFile(filename, icsContent) {
@@ -93,11 +93,11 @@ export function generateReservationICS({ reservation, user }) {
   const endDate = reservation.dateEnd || reservation.date_end;
   const guestName = reservation.userName || reservation.user_name || user?.name || 'Familie';
 
-  const title = `Chalet Zahler — Aufenthalt (${guestName})`;
+  const title = `Chalet Alpenrose — Aufenthalt (${guestName})`;
   const summary = title;
-  const location = 'Chalet Zahler, Thunersee, Schweiz';
+  const location = 'Chalet Alpenrose, Thunersee, Schweiz';
   const description = [
-    `Aufenthalt im Chalet Zahler von ${guestName}.`,
+    `Aufenthalt im Chalet Alpenrose von ${guestName}.`,
     `Check-in: ab 15:00 Uhr (${startDate})`,
     `Check-out: bis 11:00 Uhr (${endDate})`,
     `Vor Abreise: Kehricht entsorgen (blaue AVAG-Säcke) und Übergabe-Notiz erfassen.`

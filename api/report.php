@@ -96,7 +96,7 @@ if ($windowSize !== 'Unbekannt') {
 }
 
 $discordPayload = [
-    'username'   => 'Chalet Zahler 🏔️ Melder',
+    'username'   => 'Chalet Alpenrose 🏔️ Melder',
     'avatar_url' => 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f3d4.png',
     'embeds'     => [
         [
@@ -126,7 +126,7 @@ $discordPayload = [
                 ],
             ],
             'footer'      => [
-                'text' => "Chalet Zahler • Hilterfingen–Oberhofen • {$timestamp}",
+                'text' => "Chalet Alpenrose • Hilterfingen–Oberhofen • {$timestamp}",
             ],
         ],
     ],

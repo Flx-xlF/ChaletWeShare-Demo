@@ -160,7 +160,7 @@ export async function openDayDetailSheet({ container, dateISO, user, onSelectAsS
              <strong>Anreisetag:</strong> Check-in ab Nachmittag.
            </div>`
         : `<div class="card" style="background: var(--color-surface); border: var(--border); font-size: 0.85rem; margin-top: 8px;">
-             Feste Buchung im Chalet Zahler.
+             Feste Buchung im Chalet Alpenrose.
            </div>`);
 
     bodyHtml = `

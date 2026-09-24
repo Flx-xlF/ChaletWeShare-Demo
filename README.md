@@ -49,6 +49,15 @@ Experience the full interactive demo directly in your browser:
 
 ---
 
+### 4. Profile Personalization & 32x32 Bauhaus Pixel-Art Avatars
+*Offline sync tokens, device pairing codes, and 13 custom-crafted 32x32 SVG pixel-art Alpine avatars.*
+
+<div align="center">
+  <img src="docs/screenshots/profile-settings.png" alt="Profile Personalization and Pixel-Art Avatars" width="480" style="max-width: 100%; border: 2px solid #0D0D0D;" />
+</div>
+
+---
+
 ## ✨ Key Architectural Highlights
 
 ### ⚡ 1. Zero-Framework Vanilla Architecture

@@ -1,5 +1,5 @@
 /**
- * Chalet Zahler — Bauhaus Confetti Celebration Animation
+ * Chalet Alpenrose — Bauhaus Confetti Celebration Animation
  * Powered by anime.js: Shoots colorful geometric confetti across the viewport.
  */
 import anime from 'animejs';
@@ -7,7 +7,7 @@ import { escapeHtml } from '../utils/htmlUtils.js';
 
 export function playConfettiCelebration({
   text = 'Reservation bestätigt!',
-  subtext = 'Chalet Zahler — Thunersee'
+  subtext = 'Chalet Alpenrose — Thunersee'
 } = {}) {
   return new Promise((resolve) => {
     // Remove existing if any

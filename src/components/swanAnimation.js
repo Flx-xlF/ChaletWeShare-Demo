@@ -1,5 +1,5 @@
 /**
- * Chalet Zahler — Swan Celebration Animation
+ * Chalet Alpenrose — Swan Celebration Animation
  * Powered by anime.js: Glides a majestic Thunersee swan across the screen with water ripples.
  */
 import anime from 'animejs';
@@ -7,7 +7,7 @@ import { escapeHtml } from '../utils/htmlUtils.js';
 
 export function playSwanCelebration({
   text = 'Reservation eingereicht!',
-  subtext = 'Chalet Zahler — Thunersee'
+  subtext = 'Chalet Alpenrose — Thunersee'
 } = {}) {
   return new Promise((resolve) => {
     // Remove existing if any

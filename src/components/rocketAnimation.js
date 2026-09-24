@@ -1,5 +1,5 @@
 /**
- * Chalet Zahler — Rocket Celebration Animation
+ * Chalet Alpenrose — Rocket Celebration Animation
  * Powered by anime.js: Shoots a Bauhaus pixel rocket upward with smoke and particle trails.
  */
 import anime from 'animejs';

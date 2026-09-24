@@ -105,7 +105,7 @@ export function openBookingConfirmSheet({ container, startDate, endDate, user, o
         <div>
           <div style="font-weight: 700; font-size: 0.95rem;">${escapeHtml(user.name)}</div>
           <div style="font-size: 0.8rem; color: var(--color-text-muted);">
-            ${nights} ${nights === 1 ? 'Nacht' : 'Nächte'} im Chalet Zahler
+            ${nights} ${nights === 1 ? 'Nacht' : 'Nächte'} im Chalet Alpenrose
           </div>
         </div>
       </div>

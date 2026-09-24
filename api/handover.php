@@ -1,6 +1,6 @@
 <?php
 /**
- * Chalet Zahler — Handover Notes API
+ * Chalet Alpenrose — Handover Notes API
  * Manages handover notes from current guests to the next reservation (garbage, missing items, broken items, custom notes).
  */
 
@@ -129,7 +129,7 @@ function handleCreateNote(PDO $pdo, $input) {
         sendWebPushToUser(
             $pdo,
             $nextRes['user_id'],
-            'Chalet Zahler — Übergabe-Notiz',
+            'Chalet Alpenrose — Übergabe-Notiz',
             $notifMsg,
             ['reservation_id' => $nextRes['id']]
         );

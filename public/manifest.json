@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "Chalet Zahler",
-  "short_name": "Chalet Zahler",
-  "description": "Chalet-Reservierung für die Familie Zahler. Thunersee, Hilterfingen–Oberhofen.",
+  "name": "Chalet Alpenrose",
+  "short_name": "Chalet Alpenrose",
+  "description": "Chalet-Reservierung für die Eigentümergemeinschaft Alpenrose. Thunersee, Hilterfingen–Oberhofen.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

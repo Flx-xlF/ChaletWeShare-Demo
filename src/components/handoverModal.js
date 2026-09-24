@@ -1,5 +1,5 @@
 /**
- * Chalet Zahler — Handover Modal Bottom Sheet
+ * Chalet Alpenrose — Handover Modal Bottom Sheet
  * Prompts or allows the current guest to leave instructions/notices for the next reservation,
  * or edit/delete an existing handover note seamlessly.
  */

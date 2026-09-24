@@ -56,7 +56,7 @@ export async function renderProfilePicker(container, onProfileSelected, options 
         <header style="margin-bottom: 24px; border-bottom: var(--border-thick); padding-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-end;">
           <div>
             <div style="font-size: 0.75rem; font-weight: 800; letter-spacing: 0.05em; color: var(--color-accent); text-transform: uppercase;">
-              Chalet Zahler
+              Chalet Alpenrose
             </div>
             <h1 style="margin-top: 2px;">${headerTitle}</h1>
           </div>
@@ -405,7 +405,7 @@ export async function renderProfilePicker(container, onProfileSelected, options 
           profiles = await profileManager.fetchProfiles();
           playSunAndBirdAnimation({
             text: `WILLKOMMEN, ${result.user.name.toUpperCase()}!`,
-            subtext: 'Dein Profil im Chalet Zahler ist bereit'
+            subtext: 'Dein Profil im Chalet Alpenrose ist bereit'
           });
           if (typeof onProfileSelected === 'function') {
             onProfileSelected(result.user);

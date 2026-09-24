@@ -97,8 +97,8 @@ self.addEventListener('fetch', (event) => {
 // Push notification received
 self.addEventListener('push', (event) => {
   let data = {
-    title: 'Chalet Zahler',
-    body: 'Neue Aktivität im Chalet Zahler.',
+    title: 'Chalet Alpenrose',
+    body: 'Neue Aktivität im Chalet Alpenrose.',
   };
 
   if (event.data) {
@@ -109,7 +109,7 @@ self.addEventListener('push', (event) => {
     }
   }
 
-  const title = data.title || 'Chalet Zahler';
+  const title = data.title || 'Chalet Alpenrose';
   const dynamicTag = data.tag || (data.data && data.data.tag) || (data.data && data.data.reservation_id ? 'res-' + data.data.reservation_id : 'chalet-' + Date.now());
   const isSilent = !!(data.silent || (data.data && data.data.silent));
   const shouldRenotify = typeof data.renotify === 'boolean' 

@@ -239,10 +239,10 @@ function renderAppShell(user) {
 
   app.innerHTML = `
     <header class="app-header-pill">
-      <h1 class="sr-only">Chalet Zahler — Ferienhaus Kalender & Buchung</h1>
+      <h1 class="sr-only">Chalet Alpenrose — Ferienhaus Kalender & Buchung</h1>
       <div class="app-header-pill__title" aria-hidden="true">
         <span>CHALET</span>
-        <span class="app-header-pill__badge">ZAHLER</span>
+        <span class="app-header-pill__badge">ALPENROSE</span>
       </div>
       <div style="display: flex; align-items: center; gap: 8px;">
         <div id="header-chat-hub-container"></div>

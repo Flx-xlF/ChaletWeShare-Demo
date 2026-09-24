@@ -1,5 +1,5 @@
 /**
- * Chalet Zahler — Handover Service
+ * Chalet Alpenrose — Handover Service
  * Handles handover notes for next guests (garbage, missing items, defects, custom notes).
  */
 

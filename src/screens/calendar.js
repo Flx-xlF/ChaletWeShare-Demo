@@ -705,7 +705,7 @@ export class CalendarScreen {
           </div>
 
           <div style="font-size: 0.95rem; font-weight: 800; color: var(--color-text); margin-bottom: 8px;">
-            ${isOngoing ? 'Gute Erholung im Chalet Zahler!' : 'Anreise-Briefing & Check-in Details:'}
+            ${isOngoing ? 'Gute Erholung im Chalet Alpenrose!' : 'Anreise-Briefing & Check-in Details:'}
           </div>
 
           <!-- Notes from Previous Sibling / Departure -->

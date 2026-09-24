@@ -148,7 +148,7 @@ if ($currentHour >= 8) {
                 ");
                 $checkNotif->execute([$recipientId, $stay['id']]);
                 if ((int)$checkNotif->fetchColumn() === 0) {
-                    $arrivalMsg = "Dein Aufenthalt im Chalet Zahler beginnt heute! Bitte beachte das Anreise-Briefing und eventuelle Übergabe-Notizen.";
+                    $arrivalMsg = "Dein Aufenthalt im Chalet Alpenrose beginnt heute! Bitte beachte das Anreise-Briefing und eventuelle Übergabe-Notizen.";
                     $insRemind = $pdo->prepare("
                         INSERT INTO notifications (user_id, type, message, related_reservation_id, created_at)
                         VALUES (?, 'arrival_reminder', ?, ?, ?)
@@ -158,7 +158,7 @@ if ($currentHour >= 8) {
                     sendWebPushToUser(
                         $pdo,
                         $recipientId,
-                        'Chalet Zahler — Willkommen & Anreise',
+                        'Chalet Alpenrose — Willkommen & Anreise',
                         $arrivalMsg,
                         ['reservation_id' => $stay['id'], 'action' => 'arrival_briefing']
                     );
@@ -224,7 +224,7 @@ if (!empty($targetEndDates)) {
                     ");
                     $checkNotif->execute([$recipientId, $stay['id']]);
                     if ((int)$checkNotif->fetchColumn() === 0) {
-                        $remindMsg = "Dein Aufenthalt im Chalet Zahler endet bald. Gibt es etwas, das der nächste Gast wissen sollte?";
+                        $remindMsg = "Dein Aufenthalt im Chalet Alpenrose endet bald. Gibt es etwas, das der nächste Gast wissen sollte?";
                         $insRemind = $pdo->prepare("
                             INSERT INTO notifications (user_id, type, message, related_reservation_id, created_at)
                             VALUES (?, 'handover_reminder', ?, ?, ?)
@@ -234,7 +234,7 @@ if (!empty($targetEndDates)) {
                         sendWebPushToUser(
                             $pdo,
                             $recipientId,
-                            'Chalet Zahler — Abreise-Erinnerung',
+                            'Chalet Alpenrose — Abreise-Erinnerung',
                             $remindMsg,
                             ['reservation_id' => $stay['id'], 'action' => 'handover_prompt']
                         );
@@ -333,7 +333,7 @@ if ($currentHour >= 10) {
             ");
             $checkNotif->execute([$att['user_id'], "%{$uwd['date']}%"]);
             if ((int)$checkNotif->fetchColumn() === 0) {
-                $eveMsg = "Morgen ist gemeinsamer Arbeitstag ({$seasonLabel}) im Chalet Zahler! Wir freuen uns auf die gemeinsame Zeit.";
+                $eveMsg = "Morgen ist gemeinsamer Arbeitstag ({$seasonLabel}) im Chalet Alpenrose! Wir freuen uns auf die gemeinsame Zeit.";
                 $ins = $pdo->prepare("
                     INSERT INTO notifications (user_id, type, message, related_reservation_id, created_at)
                     VALUES (?, 'working_day_eve_reminder', ?, NULL, ?)
