@@ -7,6 +7,7 @@
 [![LCP](https://img.shields.io/badge/LCP-152ms-2ea44f?style=flat-square)](https://flx-xlf.github.io/ChaletWeShare-Demo/)
 [![WCAG](https://img.shields.io/badge/A11y-WCAG_2.1_AA-blue?style=flat-square)](https://flx-xlf.github.io/ChaletWeShare-Demo/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-lightgrey?style=flat-square)](LICENSE)
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-Fund_my_mountain_connectivity-F16061?style=flat-square&logo=ko-fi&logoColor=white)](https://ko-fi.com/flxxlf)
 
 ---
 
@@ -111,6 +112,13 @@ npm run dev
 # Build production bundle
 npm run build
 ```
+
+---
+
+## ☕ Support
+
+If you find this project or its architecture interesting:  
+👉 **[Fund my mountain connectivity on Ko-fi](https://ko-fi.com/flxxlf)** ☕
 
 ---
 
