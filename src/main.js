@@ -546,7 +546,7 @@ function renderProfileScreen(mountEl, user) {
 
       <!-- Footer Branding -->
       <div style="text-align: center; margin-top: 32px; margin-bottom: 16px; font-size: 0.72rem; color: var(--color-text-muted); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.8;">
-        Built with love and a bit of madness by <a href="https://github.com/Flx-xlF" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline; text-underline-offset: 3px; font-weight: 600;">schema/f</a>
+        Built with care (and a bit of madness) by <a href="https://github.com/Flx-xlF" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline; text-underline-offset: 3px; font-weight: 600;">schema/f</a>
       </div>
     </div>
   `;
