@@ -1,118 +1,114 @@
 # 🏔️ ChaletWeShare (Demo)
 
-> **Progressive Web App for Shared Alpine Vacation Homes & Multi-Party Co-Ownership**  
-> *A high-performance portfolio showcase built with Zero-Framework Vanilla JavaScript, a Bauhaus/Neo-Brutalist design system, offline-first PWA caching, and automated booking conflict resolution.*
+> A lightweight Progressive Web App for shared vacation homes. Built to coordinate bookings, handovers, and chores without messy spreadsheets or family group chat drama.
 
-[![Live Demo](https://img.shields.io/badge/Live_Demo-GitHub_Pages-F20587?style=for-the-badge&logo=github)](https://flx-xlf.github.io/ChaletWeShare-Demo/)
-[![Bundle Size](https://img.shields.io/badge/Bundle_Size-<95_kB_gzipped-black?style=for-the-badge)](https://flx-xlf.github.io/ChaletWeShare-Demo/)
-[![Performance](https://img.shields.io/badge/LCP-152ms-brightgreen?style=for-the-badge)](https://flx-xlf.github.io/ChaletWeShare-Demo/)
-[![Accessibility](https://img.shields.io/badge/WCAG_2.1-AA_Compliant-blue?style=for-the-badge)](https://flx-xlf.github.io/ChaletWeShare-Demo/)
-[![License](https://img.shields.io/badge/License-MIT-lightgrey?style=for-the-badge)](LICENSE)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-GitHub_Pages-F20587?style=flat-square&logo=github)](https://flx-xlf.github.io/ChaletWeShare-Demo/)
+[![Bundle Size](https://img.shields.io/badge/Bundle-<95_kB_gzipped-black?style=flat-square)](https://flx-xlf.github.io/ChaletWeShare-Demo/)
+[![LCP](https://img.shields.io/badge/LCP-152ms-2ea44f?style=flat-square)](https://flx-xlf.github.io/ChaletWeShare-Demo/)
+[![WCAG](https://img.shields.io/badge/A11y-WCAG_2.1_AA-blue?style=flat-square)](https://flx-xlf.github.io/ChaletWeShare-Demo/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-lightgrey?style=flat-square)](LICENSE)
 
 ---
 
-## 🚀 Interactive Live Demo
+## 🧭 Live Demo
 
-Experience the full interactive demo directly in your browser:  
+You can try the interactive client-side demo directly in your browser:  
 👉 **[https://flx-xlf.github.io/ChaletWeShare-Demo/](https://flx-xlf.github.io/ChaletWeShare-Demo/)**
 
-* **Interactive Client Sandbox**: Pre-seeded with demo profiles (*Elena*, *Lucas*, *Sophie*, *Nico*).
-* **Test the Booking Engine**: Book stays, trigger conflict resolutions, view live 48-hour veto timers, and explore fair-share analytics.
-* **100% Client-Side**: Runs smoothly on GitHub Pages with zero server dependencies required.
+* The demo runs entirely in the browser with pre-seeded demo profiles (*Elena*, *Lucas*, *Sophie*, *Nico*).
+* You can book dates, test the 48-hour veto system, switch avatars, and inspect the co-ownership stats.
+* No account or server setup needed.
 
 ---
 
-## 📸 Visual Showcase
+## 📸 Screenshots
 
-### 1. High-Resolution Bauhaus Calendar & Micro-Chat
-*Split-slot check-in/check-out calendar (14:00 check-in / 11:00 check-out), razor-sharp 32x32 SVG pixel-art avatars, and status badges.*
+### Desktop Calendar
+*Split check-in and check-out slots (14:00 / 11:00), stay status indicators, and avatar markers.*
 
-![Desktop Calendar Overview](docs/screenshots/calendar-desktop.png)
+![Desktop Calendar](docs/screenshots/calendar-desktop.png)
 
 ---
 
-### 2. Mobile PWA & Booking Experience
-*Optimized for standalone iOS and Android mobile screens. Native bottom sheets, fast tap targets, and zero horizontal jitter.*
+### Mobile PWA & Booking Sheet
+*Designed for phone screens with native-like bottom sheets and quick date selection.*
 
-| Mobile Calendar View | Booking & Conflict Sheet |
+| Mobile Calendar View | Booking & Detail Sheet |
 | :---: | :---: |
 | ![Mobile Calendar](docs/screenshots/calendar-mobile.png) | ![Booking Sheet](docs/screenshots/booking-modal.png) |
 
 ---
 
-### 3. Fair-Share Analytics & Notification Stream
-*Transparent booking quota balances, handover checklists, and real-time sibling notifications.*
+### Fair-Share Statistics & Notification Hub
+*Booking balances across co-owners, handover reminders, and arrival briefings.*
 
-| Stats & Quota Analytics | Notification Hub |
+| Usage & Night Balances | Notifications & Handover |
 | :---: | :---: |
 | ![Stats Dashboard](docs/screenshots/stats-dashboard.png) | ![Notification Sheet](docs/screenshots/notification-sheet.png) |
 
 ---
 
-### 4. Profile Personalization & 32x32 Bauhaus Pixel-Art Avatars
-*Offline sync tokens, device pairing codes, and 13 custom-crafted 32x32 SVG pixel-art Alpine avatars.*
+### Profile Picker & Avatars
+*Device linking code and 13 Alpine-themed 32x32 SVG pixel avatars.*
 
 <div align="center">
-  <img src="docs/screenshots/profile-settings.png" alt="Profile Personalization and Pixel-Art Avatars" width="480" style="max-width: 100%; border: 2px solid #0D0D0D;" />
+  <img src="docs/screenshots/profile-settings.png" alt="Profile Picker and Pixel Avatars" width="460" style="max-width: 100%; border: 2px solid #0D0D0D;" />
 </div>
 
 ---
 
-## ✨ Key Architectural Highlights
+## 🛠️ How It Works
 
-### ⚡ 1. Zero-Framework Vanilla Architecture
-* **Under 95 kB gzipped** total production bundle (JS + CSS).
-* **152ms Largest Contentful Paint (LCP)** and **0.00 Cumulative Layout Shift (CLS)**.
-* Clean DOM rendering with zero runtime virtual-DOM overhead or heavy framework dependencies.
+### 1. Vanilla JavaScript & Custom CSS
+No React, no Vue, and no Tailwind. Just clean modern JavaScript (ES2022) and CSS custom properties.
+* **Small footprint**: ~83 kB JS and ~9 kB CSS (gzipped).
+* **Fast initial paint**: ~150ms LCP on standard devices.
+* **Direct DOM updates**: Fast enough that virtual DOM overhead wasn't needed.
 
-### 🏔️ 2. Bauhaus & Neo-Brutalist Design Tokens
-* **Typography**: Crisp, high-readability modern grotesque paired with monospace metric displays.
-* **Color Palette**: Stark Ink (`#0D0D0D`) on Crisp Canvas (`#FFFFFF`), with electric accents (`#F20587` Hot Pink, `#EF4444` Crimson, `#10B981` Emerald).
-* **Art Direction**: 13 custom-crafted 32x32 SVG pixel-art Alpine avatars (Swan, Fox, Bear, Marmot, Steinbock, Pine, etc.) rendered with `shape-rendering="crispEdges"`.
+### 2. Bauhaus-Inspired Neo-Brutalist Design
+A deliberate, high-contrast aesthetic:
+* Crisp ink on off-white (`#0D0D0D` on `#FFFFFF`) with bold borders and hard offset shadows.
+* 13 custom 32x32 SVG pixel-art avatars (Swan, Fox, Bear, Marmot, Steinbock, Pine, etc.).
+* Zero border-radius throughout for a consistent, graphic look.
 
-### 🛡️ 3. Tiered Conflict Resolution & Veto Deadline Engine
-* **Fair-Share Co-Ownership**: Transparent 48-hour objection windows for newly proposed reservations.
-* **Smart Overlap Handling**: Distinguishes between same-day check-in/out handovers vs. conflicting multi-day stays.
-* **Priority Promotion**: Automated promotion of pending bookings once veto deadlines pass without objection.
+### 3. Veto Window & Fair-Share Rules
+Co-owning a vacation home usually fails over scheduling conflicts:
+* **Split-day stays**: Guest A can check out at 11:00 and Guest B can check in at 14:00 on the same date without overlap errors.
+* **48-hour objection window**: Proposed dates are flagged as *pending*. If no co-owner files a veto within 48 hours, the stay is automatically confirmed.
+* **Usage statistics**: Tracks nights stayed per person to keep distribution transparent.
 
-### 📱 4. Offline-First PWA Experience
-* **Service Worker App Shell**: Custom network-first caching strategy with instant cache fallback for remote Alpine locations with spotty mobile coverage.
-* **Standalone Mode**: Configured with Web App Manifest (`maskable` icons, standalone display mode, safe-area inset handling).
+### 4. Offline Support for Mountain Wi-Fi
+Chalet Wi-Fi can be unpredictable:
+* A service worker caches the core application shell on first load.
+* If internet access drops during arrival, guests can still open the app to read handover notes, check-in instructions, and door codes.
+* Installable as a standalone PWA on iOS and Android home screens.
 
-### ♿ 5. WCAG 2.1 AA Accessibility
-* Verified high color contrast ratios across all status states.
-* Screen reader support (`aria-live`, `aria-label`, `<h1 class="sr-only">`).
-* Full keyboard navigability with visible focus rings (`:focus-visible`).
+### 5. Accessibility (WCAG 2.1 AA)
+* Native semantic `<button>` elements with keyboard focus indicators (`:focus-visible`).
+* ARIA dialog roles, live regions, and screen-reader headings.
+* Contrast ratios verified against WCAG AA standards.
 
-### 🔄 6. Self-Healing Multi-Engine Backend
-* **Client Demo Mode**: Zero-backend sandbox for instant GitHub Pages preview.
-* **Local Development**: Automatic SQLite initialization (`api/chaletweshare.sqlite`).
-* **Production**: MariaDB/MySQL with self-healing table auto-creation (`initMysqlSchema()`) preventing HTTP 500 crashes.
-
----
-
-## 🛠️ Tech Stack
-
-* **Frontend**: Vanilla JavaScript (ES2022), Vanilla CSS (Custom Design System), Vite, anime.js
-* **Backend**: PHP 8.x, PDO (MySQL & SQLite), Web Push API (`minishlink/web-push`)
-* **DevOps**: GitHub Actions / GitHub Pages, PWA Service Worker
+### 6. Dual Database Support
+* **Demo / GitHub Pages**: Runs entirely in-browser using localStorage fallbacks.
+* **Development**: Automatically uses SQLite (`api/chaletweshare.sqlite`) with auto-created tables.
+* **Production**: Connects to MySQL/MariaDB with self-healing table verification on initial request.
 
 ---
 
-## 💻 Local Setup & Development
+## 💻 Running Locally
 
 ```bash
-# 1. Clone the repository
+# Clone the repository
 git clone https://github.com/Flx-xlF/ChaletWeShare-Demo.git
 cd ChaletWeShare-Demo
 
-# 2. Install dependencies
+# Install development dependencies
 npm install
 
-# 3. Start local development server
+# Start local dev server
 npm run dev
 
-# 4. Build for production (outputs to /dist)
+# Build production bundle
 npm run build
 ```
 
@@ -120,8 +116,8 @@ npm run build
 
 ## 📄 License
 
-This showcase project is licensed under the [MIT License](LICENSE).
+This project is licensed under the [MIT License](LICENSE).
 
 ---
 
-*Built with love and a bit of madness by [schema/f](https://github.com/Flx-xlF)*
+*Built with care (and a bit of madness) by [schema/f](https://github.com/Flx-xlF)*
