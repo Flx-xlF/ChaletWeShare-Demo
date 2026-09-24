@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Minimalist, seamless gradient from the approved 5-color palette -->
+    <linearGradient id="iveGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F27EB4" /> <!-- Light Pink -->
+      <stop offset="100%" stop-color="#F20587" /> <!-- Hot Pink -->
+    </linearGradient>
+    
+    <!-- Subtle, elegant depth (Dieter Rams influence: less but better) -->
+    <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000000" flood-opacity="0.15" />
+    </filter>
+  </defs>
+
+  <!-- Perfectly flat, vibrant background -->
+  <rect width="512" height="512" fill="url(#iveGradient)" />
+
+  <!-- Mathematically flawless Chalet Line-Art -->
+  <g filter="url(#soft-shadow)" fill="none" stroke="#F2F2F2" stroke-width="36" stroke-linecap="round" stroke-linejoin="round">
+    
+    <!-- The distinct Alpine roof, perfectly angled (1:1 slope) -->
+    <path d="M 100 280 L 256 124 L 412 280" />
+    
+    <!-- The base structure, snapping exactly to the roof's geometry -->
+    <path d="M 152 228 V 384 C 152 397 163 408 176 408 H 336 C 349 408 360 397 360 384 V 228" />
+    
+    <!-- The elegant, perfectly centered minimalist door -->
+    <path d="M 224 408 V 340 C 224 331 231 324 240 324 H 272 C 281 324 288 331 288 340 V 408" />
+  </g>
+</svg>

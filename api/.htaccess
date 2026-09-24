@@ -1,0 +1,19 @@
+# ChaletWeShare — API Security & Routing
+
+# Deny direct web access to sensitive files
+<FilesMatch "^(config.*\.php|.*\.sqlite.*|.*\.sql|composer\.(json|lock)|\.env.*|\.git.*)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order deny,allow
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Handle OPTIONS preflight
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_METHOD} OPTIONS
+    RewriteRule ^(.*)$ $1 [R=200,L]
+</IfModule>

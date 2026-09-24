@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+  <title>ChaletWeShare (Demo) — Alpine Shared Chalet PWA</title>
+  <meta name="description" content="Chalet-Reservierung für die Familie Zahler. Thunersee, Hilterfingen–Oberhofen.">
+
+  <!-- PWA & Mobile Web Meta -->
+  <meta name="theme-color" content="#F2F2F2">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Chalet Zahler">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="apple-touch-icon" sizes="180x180" href="./app-icon-180-v2.png">
+  <link rel="apple-touch-icon" href="./app-icon-180-v2.png">
+  <link rel="icon" type="image/svg+xml" href="./favicon-v2.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="./favicon-v2.png">
+
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/src/index.css">
+</head>
+<body>
+
+  <!-- Demo Showcase Ribbon -->
+  <div style="background: #0D0D0D; color: #FFFFFF; font-family: monospace; font-size: 0.75rem; padding: 6px 12px; text-align: center; border-bottom: 2px solid #F20587; display: flex; justify-content: space-between; align-items: center; z-index: 9999; position: relative;">
+    <span>🏔️ <strong>ChaletWeShare (Demo)</strong> • Interactive Portfolio Showcase</span>
+    <a href="https://github.com/Flx-xlF/ChaletWeShare-Demo" target="_blank" rel="noopener noreferrer" style="color: #F20587; text-decoration: underline; font-weight: bold; margin-left: 8px;">GitHub Repo ↗</a>
+  </div>
+
+  <div id="app"></div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
