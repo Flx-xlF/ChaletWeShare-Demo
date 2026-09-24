@@ -328,7 +328,7 @@ export class NotificationBadge {
       {
         id: 101,
         type: 'new_reservation',
-        message: 'Neue Reservation von Beat: 25. – 28. Veto möglich.',
+        message: 'Neue Reservation von Lucas: 25. – 28. Veto möglich.',
         is_read: false,
         related_reservation_id: 'res-demo-2',
         created_at: new Date(Date.now() - 3600000).toISOString().replace('T', ' ').substring(0, 19)
@@ -336,7 +336,7 @@ export class NotificationBadge {
       {
         id: 102,
         type: 'auto_approved',
-        message: 'Reservation von Anna: 18. – 21. ist fest gebucht.',
+        message: 'Reservation von Elena: 18. – 21. ist fest gebucht.',
         is_read: true,
         related_reservation_id: 'res-demo-1',
         created_at: new Date(Date.now() - 86400000).toISOString().replace('T', ' ').substring(0, 19)

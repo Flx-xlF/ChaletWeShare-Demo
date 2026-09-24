@@ -55,7 +55,7 @@ export class ReservationStore {
         {
           id: 'res-demo-1',
           userId: 1,
-          userName: 'Anna',
+          userName: 'Elena',
           userAvatar: 'swan',
           dateStart: formatDateISO(dBookedStart),
           dateEnd: formatDateISO(dBookedEnd),
@@ -65,7 +65,7 @@ export class ReservationStore {
         {
           id: 'res-demo-2',
           userId: 2,
-          userName: 'Beat',
+          userName: 'Lucas',
           userAvatar: 'fox',
           dateStart: formatDateISO(dPendingStart),
           dateEnd: formatDateISO(dPendingEnd),
@@ -89,7 +89,7 @@ export class ReservationStore {
       const y = today.getFullYear();
       const m = today.getMonth();
 
-      // Sample maintenance 1: Afternoon cleaning on Monday after Anna's stay
+      // Sample maintenance 1: Afternoon cleaning on Monday after Elena's stay
       const dClean = new Date(y, m, 21);
       // Sample maintenance 2: Full day chimney sweep
       const dSweep = new Date(y, m, 10);
@@ -102,7 +102,7 @@ export class ReservationStore {
           halfDay: 'afternoon',
           reason: 'Endreinigung Chalet',
           userId: 1,
-          userName: 'Anna'
+          userName: 'Elena'
         },
         {
           id: 'maint-demo-2',
@@ -111,7 +111,7 @@ export class ReservationStore {
           halfDay: 'full',
           reason: 'Kaminfeger & Heizungskontrolle',
           userId: 1,
-          userName: 'Anna'
+          userName: 'Elena'
         }
       ];
       this._saveMaintenance();

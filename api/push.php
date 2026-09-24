@@ -29,7 +29,7 @@ function getVapidConfig()
         return null;
     }
     return [
-        'subject' => $cfg['vapid_subject'] ?? 'mailto:chalet@schoolyard.ch',
+        'subject' => $cfg['vapid_subject'] ?? 'mailto:chalet@chaletshare.demo',
         'publicKey' => $cfg['vapid_public_key'],
         'privateKey' => $cfg['vapid_private_key'],
     ];

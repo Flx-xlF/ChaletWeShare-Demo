@@ -217,10 +217,10 @@ export async function openDayDetailSheet({ container, dateISO, user, onSelectAsS
     // Build Sibling Approval Roster
     const familyProfiles = profileManager.getProfiles();
     const effectiveProfiles = familyProfiles.length > 0 ? familyProfiles : [
-      { id: 1, name: 'Anna', avatar: 'swan' },
-      { id: 2, name: 'Beat', avatar: 'fox' },
-      { id: 3, name: 'Clara', avatar: 'bear' },
-      { id: 4, name: 'David', avatar: 'owl' }
+      { id: 1, name: 'Elena', avatar: 'swan' },
+      { id: 2, name: 'Lucas', avatar: 'fox' },
+      { id: 3, name: 'Sophie', avatar: 'bear' },
+      { id: 4, name: 'Nico', avatar: 'ibex' }
     ];
 
     const rosterItems = effectiveProfiles.map((p) => {

@@ -12,11 +12,11 @@ return [
     'db_charset' => 'utf8mb4',
 
     // Family master access gate password hash (SHA-256)
-    // Default below is hash of: "thunersee2026"
-    'family_password_hash' => '51798aeef86970bc8e2d7f04683a6d58292813d9dbb7484469720d17ab3d945c',
+    // Default below is hash of: "chaletshare2026"
+    'family_password_hash' => 'f071eda6d2f22379c48fe5b106292b06434efb72c08757eedf366ccecbcb1516',
 
     // VAPID keys for Web Push notifications (minishlink/web-push)
-    'vapid_subject' => 'mailto:admin@schoolyard.ch',
+    'vapid_subject' => 'mailto:admin@chaletshare.demo',
     'vapid_public_key' => '',
     'vapid_private_key' => '',
 
@@ -30,7 +30,7 @@ return [
     'allowed_origins' => [
         'http://localhost:5173',
         'http://127.0.0.1:5173',
-        'https://chaletweshare.schoolyard.ch',
+        'https://chaletshare.demo',
     ],
 ];
 

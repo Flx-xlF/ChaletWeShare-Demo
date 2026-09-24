@@ -738,10 +738,10 @@ class ReservationEngine {
     let profiles = profileManager.getProfiles();
     if (!profiles || profiles.length === 0) {
       profiles = [
-        { id: 1, name: 'Anna', avatar: 'swan' },
-        { id: 2, name: 'Beat', avatar: 'fox' },
-        { id: 3, name: 'Clara', avatar: 'bear' },
-        { id: 4, name: 'David', avatar: 'owl' }
+        { id: 1, name: 'Elena', avatar: 'swan' },
+        { id: 2, name: 'Lucas', avatar: 'fox' },
+        { id: 3, name: 'Sophie', avatar: 'bear' },
+        { id: 4, name: 'Nico', avatar: 'ibex' }
       ];
     }
 

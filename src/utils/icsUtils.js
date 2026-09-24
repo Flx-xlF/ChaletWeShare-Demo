@@ -29,7 +29,7 @@ export function generateWorkingDayICS({ dateISO, season, creatorName = 'Familie'
 
   const now = new Date();
   const dtStamp = now.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-  const uid = `workingday-${dateISO}-${season}-${Date.now()}@chaletweshare.schoolyard.ch`;
+  const uid = `workingday-${dateISO}-${season}-${Date.now()}@chaletshare.demo`;
 
   return [
     'BEGIN:VCALENDAR',
@@ -108,7 +108,7 @@ export function generateReservationICS({ reservation, user }) {
 
   const now = new Date();
   const dtStamp = now.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-  const uid = `chalet-res-${reservation.id || startDate}-${Date.now()}@chaletweshare.schoolyard.ch`;
+  const uid = `chalet-res-${reservation.id || startDate}-${Date.now()}@chaletshare.demo`;
 
   return [
     'BEGIN:VCALENDAR',

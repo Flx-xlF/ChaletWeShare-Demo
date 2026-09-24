@@ -181,7 +181,7 @@ export async function renderProfilePicker(container, onProfileSelected, options 
 
                   <div class="input-group">
                     <label class="input-label" for="new-profile-name">Name</label>
-                    <input type="text" id="new-profile-name" class="input-text" placeholder="Z.B. Anna" required maxlength="30" autofocus />
+                    <input type="text" id="new-profile-name" class="input-text" placeholder="Z.B. Elena" required maxlength="30" autofocus />
                   </div>
 
                   <div class="input-group">

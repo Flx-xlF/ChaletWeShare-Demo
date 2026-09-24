@@ -1,6 +1,6 @@
 -- ============================================================
--- ChaletWeShare — MariaDB Schema
--- Deployment: chaletweshare.schoolyard.ch (cyon.ch)
+-- ChaletWeShare — MariaDB / MySQL Database Schema
+-- Compatible with MySQL 8.0+ and MariaDB 10.4+
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS `users` (
