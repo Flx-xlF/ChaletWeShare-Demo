@@ -1,131 +1,99 @@
 # 🏔️ ChaletWeShare (Demo)
 
-> A lightweight Progressive Web App for shared vacation homes. Built to coordinate bookings, handovers, and chores without messy spreadsheets or family group chat drama.
+> Lightweight, privacy-first vacation home co-ownership platform. Built with a conflict-free reservation engine, split check-in/out slots, a 48-hour veto window, fair-share usage analytics, and offline-first mountain reliability.
 
 [![Live Demo](https://img.shields.io/badge/Live_Demo-GitHub_Pages-F20587?style=flat-square&logo=github)](https://flx-xlf.github.io/ChaletWeShare-Demo/)
 [![Bundle Size](https://img.shields.io/badge/Bundle-<95_kB_gzipped-black?style=flat-square)](https://flx-xlf.github.io/ChaletWeShare-Demo/)
-[![LCP](https://img.shields.io/badge/LCP-152ms-2ea44f?style=flat-square)](https://flx-xlf.github.io/ChaletWeShare-Demo/)
-[![WCAG](https://img.shields.io/badge/A11y-WCAG_2.1_AA-blue?style=flat-square)](https://flx-xlf.github.io/ChaletWeShare-Demo/)
+[![PWA](https://img.shields.io/badge/PWA-Installable-blue?style=flat-square)](https://flx-xlf.github.io/ChaletWeShare-Demo/)
+[![A11y](https://img.shields.io/badge/A11y-WCAG_2.1_AA-10b981?style=flat-square)](https://flx-xlf.github.io/ChaletWeShare-Demo/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-lightgrey?style=flat-square)](LICENSE)
-[![Ko-fi](https://img.shields.io/badge/Ko--fi-Fund_my_mountain_connectivity-F16061?style=flat-square&logo=ko-fi&logoColor=white)](https://ko-fi.com/flxxlf)
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-Tip_Me-FF5E5B?style=flat-square&logo=kofi)](https://ko-fi.com/flxxlf)
 
 ---
 
 ## 🧭 Live Demo
 
-You can try the interactive client-side demo directly in your browser:  
+Explore the fully interactive, client-side demo directly in your browser:  
 👉 **[https://flx-xlf.github.io/ChaletWeShare-Demo/](https://flx-xlf.github.io/ChaletWeShare-Demo/)**
 
-* The demo runs entirely in the browser with pre-seeded demo profiles (*Elena*, *Lucas*, *Sophie*, *Nico*).
-* You can book dates, test the 48-hour veto system, switch avatars, and inspect the co-ownership stats.
-* No account or server setup needed.
+* **Pre-seeded Demo Profiles:**
+  * 🦢 **Elena:** Swan avatar (`demo_token_1`), active confirmed weekend stay (18th–21st), and scheduled maintenance (deep cleaning & chimney sweep).
+  * 🦊 **Lucas:** Fox avatar (`demo_token_2`), active pending booking request (25th–28th) with a running 48-hour veto window.
+  * 🐻 **Sophie:** Bear avatar (`demo_token_3`), flexible stays, handover briefings, and incident logs.
+  * 🐐 **Nico:** Ibex avatar (`demo_token_4`), weekend trips and co-ownership usage analytics.
+  * ➕ **Your Own Profile:** Switch between profiles instantaneously, test device linking codes, or reset demo data anytime.
+* **100% Client-Side:** Runs completely in your browser with `localStorage` persistence and service worker caching. No server setup, no mandatory registration, and no tracking.
 
 ---
 
-## 📸 Screenshots
+## ✨ Key Features
 
-### Desktop Calendar
-*Split check-in and check-out slots (14:00 / 11:00), stay status indicators, and avatar markers.*
+### 1. 📅 Conflict-Free Reservation Engine & Split Slots
+* **Same-Day Turnover:** Supports split check-in (14:00) and check-out (11:00) slots so co-owners can transition on the same day without blocking artificial buffer days.
+* **Smart Overlap Validation:** Prevents concurrent bookings while allowing adjacent stays and scheduled maintenance windows.
+* **Maintenance & Workdays:** Schedule deep cleaning, heating inspections, or renovation days with morning, afternoon, or full-day allocations.
 
-![Desktop Calendar](docs/screenshots/calendar-desktop.png)
+### 2. ⚖️ Democratic 48-Hour Veto Window & Fair-Share Rules
+* **Objection Period:** Proposed stays are placed in a 48-hour *pending* state, giving all co-owners fair notice to approve or file a veto before auto-confirmation.
+* **Fair-Share Statistics Dashboard:** Transparently tracks nights stayed per co-owner and season distribution to eliminate vacation home scheduling drama.
+* **Early Consensus:** Bookings are automatically confirmed as soon as all other co-owners cast their approval.
 
----
+### 3. 🏔️ Mountain-Proof Offline Reliability (PWA)
+* **Offline Access to Critical Data:** Handover notes, arrival briefings, key lockbox codes, and heating instructions remain accessible even when alpine cellular networks drop.
+* **Service Worker Caching:** Instantly loads the application shell and offline-first data layer on low-bandwidth mountain connections.
+* **Installable App:** Native-like standalone installation for iOS and Android home screens with customized alpine icons.
 
-### Mobile PWA & Booking Sheet
-*Designed for phone screens with native-like bottom sheets and quick date selection.*
+### 4. 📝 Digital Handover Hub & Incident Reports
+* **Arrival & Departure Briefings:** Track firewood levels, waste disposal schedules, key lockbox codes, and house guidelines.
+* **Actionable Notification Center:** Real-time in-app badge hub for incoming booking alerts, pending veto deadlines, and handover notices.
+* **Contextual Incident Logging:** Report broken equipment or necessary repairs directly linked to stays for effortless co-owner coordination.
 
-| Mobile Calendar View | Booking & Detail Sheet |
-| :---: | :---: |
-| ![Mobile Calendar](docs/screenshots/calendar-mobile.png) | ![Booking Sheet](docs/screenshots/booking-modal.png) |
+### 5. 🎨 Neo-Brutalist Aesthetic & Alpine Pixel Avatars
+* **High-Contrast Neo-Brutalism:** Crisp black ink (`#0D0D0D`) on pure white (`#FFFFFF`) with bold borders, hard offset shadows, and zero border-radius for glare-resistant outdoor readability.
+* **13 Custom SVG Pixel Avatars:** Hand-crafted Alpine wildlife icons (Swan, Fox, Bear, Ibex, Marmot, Pine, Owl, and more).
+* **Accessibility First (WCAG 2.1 AA):** Strict semantic HTML5 elements, full keyboard focus states (`:focus-visible`), and ARIA dialog modal semantics.
 
----
-
-### Fair-Share Statistics & Notification Hub
-*Booking balances across co-owners, handover reminders, and arrival briefings.*
-
-| Usage & Night Balances | Notifications & Handover |
-| :---: | :---: |
-| ![Stats Dashboard](docs/screenshots/stats-dashboard.png) | ![Notification Sheet](docs/screenshots/notification-sheet.png) |
-
----
-
-### Profile Picker & Avatars
-*Device linking code and 13 Alpine-themed 32x32 SVG pixel avatars.*
-
-<div align="center">
-  <img src="docs/screenshots/profile-settings.png" alt="Profile Picker and Pixel Avatars" width="460" style="max-width: 100%; border: 2px solid #0D0D0D;" />
-</div>
+### 6. 🔄 Dual Architecture: Client-Side Demo or Self-Hosted Sync
+* **Zero-Setup Demo Mode:** Fully functional in-browser experience powered by `localStorage` without requiring any backend.
+* **Optional Full-Stack Sync:** Ready for deployment with a lightweight PHP 8.x backend supporting SQLite/MySQL and Web Push notifications.
 
 ---
 
-## 🛠️ How It Works
+## 🛠️ Technology Stack
 
-### 1. Vanilla JavaScript & Custom CSS
-No React, no Vue, and no Tailwind. Just clean modern JavaScript (ES2022) and CSS custom properties.
-* **Small footprint**: ~83 kB JS and ~9 kB CSS (gzipped).
-* **Fast initial paint**: ~150ms LCP on standard devices.
-* **Direct DOM updates**: Fast enough that virtual DOM overhead wasn't needed.
-
-### 2. Bauhaus-Inspired Neo-Brutalist Design
-A deliberate, high-contrast aesthetic:
-* Crisp ink on off-white (`#0D0D0D` on `#FFFFFF`) with bold borders and hard offset shadows.
-* 13 custom 32x32 SVG pixel-art avatars (Swan, Fox, Bear, Marmot, Steinbock, Pine, etc.).
-* Zero border-radius throughout for a consistent, graphic look.
-
-### 3. Veto Window & Fair-Share Rules
-Co-owning a vacation home usually fails over scheduling conflicts:
-* **Split-day stays**: Guest A can check out at 11:00 and Guest B can check in at 14:00 on the same date without overlap errors.
-* **48-hour objection window**: Proposed dates are flagged as *pending*. If no co-owner files a veto within 48 hours, the stay is automatically confirmed.
-* **Usage statistics**: Tracks nights stayed per person to keep distribution transparent.
-
-### 4. Offline Support for Mountain Wi-Fi
-Chalet Wi-Fi can be unpredictable:
-* A service worker caches the core application shell on first load.
-* If internet access drops during arrival, guests can still open the app to read handover notes, check-in instructions, and door codes.
-* Installable as a standalone PWA on iOS and Android home screens.
-
-### 5. Accessibility (WCAG 2.1 AA)
-* Native semantic `<button>` elements with keyboard focus indicators (`:focus-visible`).
-* ARIA dialog roles, live regions, and screen-reader headings.
-* Contrast ratios verified against WCAG AA standards.
-
-### 6. Dual Database Support
-* **Demo / GitHub Pages**: Runs entirely in-browser using localStorage fallbacks.
-* **Development**: Automatically uses SQLite (`api/chaletweshare.sqlite`) with auto-created tables.
-* **Production**: Connects to MySQL/MariaDB with self-healing table verification on initial request.
+| Component | Technology | Rationale |
+|---|---|---|
+| **Core Architecture** | Vanilla ES Modules (ES2022) | Zero framework overhead, instantaneous boot time, and direct DOM manipulation |
+| **Styling & Design System** | Modern Vanilla CSS | Neo-Brutalist high-contrast tokens, hard drop shadows, and zero border-radius |
+| **Micro-Animations** | [Anime.js](https://animejs.com/) | Smooth bottom-sheet transitions, celebration effects, and micro-interactions |
+| **PWA & Offline Cache** | Service Worker & Web App Manifest | Mountain-proof offline cache for door codes, handover notes, and bookings |
+| **Bundler & Build Tool** | [Vite](https://vitejs.dev/) | Lightning-fast HMR and ultra-compact production bundle (<95 kB gzipped) |
+| **Hosting** | [GitHub Pages](https://pages.github.com/) | 1-click CI/CD deployment via GitHub Actions with zero server maintenance |
 
 ---
 
-## 💻 Running Locally
+## 🚀 Local Development
 
 ```bash
-# Clone the repository
+# 1. Clone the repository
 git clone https://github.com/Flx-xlF/ChaletWeShare-Demo.git
 cd ChaletWeShare-Demo
 
-# Install development dependencies
+# 2. Install dependencies
 npm install
 
-# Start local dev server
+# 3. Start development server
 npm run dev
 
-# Build production bundle
+# 4. Create production build
 npm run build
 ```
 
 ---
 
-## ☕ Support
+## 📄 License & Attribution
 
-If you find this project or its architecture interesting:  
-👉 **[Fund my mountain connectivity on Ko-fi](https://ko-fi.com/flxxlf)** ☕
+Distributed under the **MIT License**.
 
----
-
-## 📄 License
-
-This project is licensed under the [MIT License](LICENSE).
-
----
-
-*Built with care (and a bit of madness) by [schema/f](https://github.com/Flx-xlF)*
+Built with care (and a bit of madness) by [schema/f](https://github.com/Flx-xlF).  
+Enjoy my work? [Tip me on Ko-fi](https://ko-fi.com/flxxlf).
