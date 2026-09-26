@@ -7,6 +7,7 @@ import { PixelBell, PixelCalendar, PixelWarning, PixelCheck, PixelParty, PixelCa
 import { escapeHtml } from '../utils/htmlUtils.js';
 import { notificationToast } from './notificationToast.js';
 import { reservationEngine } from '../engine/reservationEngine.js';
+import { reservationStore } from '../engine/reservationStore.js';
 import { activeMicroChatContext } from './microChat.js';
 
 export class NotificationBadge {
@@ -324,21 +325,35 @@ export class NotificationBadge {
         return JSON.parse(raw);
       } catch (e) {}
     }
+    const now = new Date();
+    const curYear = now.getFullYear();
+    const curMonth = String(now.getMonth() + 1).padStart(2, '0');
+    const demoDate1 = `${curYear}-${curMonth}-25`;
+    const demoDate2 = `${curYear}-${curMonth}-18`;
+
     const initial = [
       {
         id: 101,
         type: 'new_reservation',
-        message: 'Neue Reservation von Lucas: 25. – 28. Veto möglich.',
+        message: 'Neue Reservation von Beat: 25. – 28. Veto möglich.',
         is_read: false,
         related_reservation_id: 'res-demo-2',
+        action_payload: {
+          reservation_id: 'res-demo-2',
+          date: demoDate1
+        },
         created_at: new Date(Date.now() - 3600000).toISOString().replace('T', ' ').substring(0, 19)
       },
       {
         id: 102,
         type: 'auto_approved',
-        message: 'Reservation von Elena: 18. – 21. ist fest gebucht.',
+        message: 'Reservation von Anna: 18. – 21. ist fest gebucht.',
         is_read: true,
         related_reservation_id: 'res-demo-1',
+        action_payload: {
+          reservation_id: 'res-demo-1',
+          date: demoDate2
+        },
         created_at: new Date(Date.now() - 86400000).toISOString().replace('T', ' ').substring(0, 19)
       }
     ];
@@ -385,6 +400,161 @@ export class NotificationBadge {
     this.renderCurrentList();
   }
 
+  /**
+   * Resolves the logical deep-link destination and action label for any notification item.
+   * Guarantees that every notification features a logical, functional target.
+   * @param {Object} n
+   * @returns {Object} Target descriptor
+   */
+  resolveDeepLinkTarget(n) {
+    const payload = n.action_payload || {};
+    let targetResId = n.related_reservation_id || payload.reservation_id || payload.target_reservation_id || null;
+    let targetMaintId = payload.maintenance_id || null;
+    let targetWdId = payload.working_day_id || null;
+    let targetAction = payload.action || null;
+    let targetRoute = payload.route || null;
+
+    let extractedDate = null;
+    if (payload.date) {
+      extractedDate = payload.date;
+    } else if (Array.isArray(payload.proposed_dates) && payload.proposed_dates[0]) {
+      extractedDate = payload.proposed_dates[0];
+    } else if (payload.date_start) {
+      extractedDate = payload.date_start;
+    } else if (payload.date_end) {
+      extractedDate = payload.date_end;
+    }
+
+    if (!extractedDate && n.message) {
+      // 1. Try ISO: YYYY-MM-DD
+      const isoMatch = n.message.match(/\b\d{4}-\d{2}-\d{2}\b/);
+      if (isoMatch) {
+        extractedDate = isoMatch[0];
+      } else {
+        // 2. Try German full date: DD.MM.YYYY
+        const deFullMatch = n.message.match(/\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b/);
+        if (deFullMatch) {
+          const d = String(deFullMatch[1]).padStart(2, '0');
+          const m = String(deFullMatch[2]).padStart(2, '0');
+          const y = deFullMatch[3];
+          extractedDate = `${y}-${m}-${d}`;
+        } else {
+          // 3. Try German short date: DD.MM. (assume current or next year)
+          const deShortMatch = n.message.match(/\b(\d{1,2})\.(\d{1,2})\./);
+          if (deShortMatch) {
+            const d = String(deShortMatch[1]).padStart(2, '0');
+            const m = String(deShortMatch[2]).padStart(2, '0');
+            const now = new Date();
+            let y = now.getFullYear();
+            // If month is earlier than current month by >2, likely next year
+            if (parseInt(m, 10) < now.getMonth() - 2) {
+              y += 1;
+            }
+            extractedDate = `${y}-${m}-${d}`;
+          }
+        }
+      }
+    }
+
+    // Secondary fallback from store if available
+    if (!extractedDate && targetResId && typeof reservationStore !== 'undefined') {
+      const res = reservationStore.reservations.find(r => r.id == targetResId);
+      if (res && (res.dateStart || res.date_start)) {
+        extractedDate = res.dateStart || res.date_start;
+      }
+    }
+    if (!extractedDate && targetMaintId && typeof reservationStore !== 'undefined') {
+      const mb = reservationStore.maintenanceBlocks.find(m => m.id == targetMaintId);
+      if (mb && (mb.dateStart || mb.date_start)) {
+        extractedDate = mb.dateStart || mb.date_start;
+      }
+    }
+    if (!extractedDate && targetWdId && typeof reservationStore !== 'undefined') {
+      const wd = reservationStore.workingDays.find(w => w.id == targetWdId);
+      if (wd) {
+        extractedDate = wd.date || (Array.isArray(wd.proposed_dates) ? wd.proposed_dates[0] : (Array.isArray(wd.proposedDates) ? wd.proposedDates[0] : null));
+      }
+    }
+
+    // Determine intuitive and actionable link label based on notification type
+    let linkLabel = 'Im Kalender öffnen →';
+    switch (n.type) {
+      case 'cancellation':
+        linkLabel = 'Freie Tage buchen →';
+        break;
+      case 'veto':
+        linkLabel = 'Konflikt lösen →';
+        break;
+      case 'conflict_proposal':
+        linkLabel = 'Vorschlag prüfen →';
+        break;
+      case 'resolved':
+        linkLabel = 'Lösung ansehen →';
+        break;
+      case 'new_reservation':
+        linkLabel = 'Reservation prüfen →';
+        break;
+      case 'auto_approved':
+      case 'all_approved':
+      case 'approval':
+        linkLabel = 'Buchung ansehen →';
+        break;
+      case 'working_day_proposal':
+      case 'working_day_vote_reminder':
+        linkLabel = 'Jetzt abstimmen →';
+        break;
+      case 'working_day_all_voted':
+        linkLabel = 'Termin festlegen →';
+        break;
+      case 'working_day':
+      case 'working_day_rsvp_reminder':
+        linkLabel = 'Teilnahme rückmelden →';
+        break;
+      case 'working_day_finalized':
+      case 'working_day_summary':
+      case 'working_day_eve_reminder':
+        linkLabel = 'Im Kalender vormerken →';
+        break;
+      case 'working_day_deleted':
+        linkLabel = 'Kalender öffnen →';
+        break;
+      case 'maintenance_created':
+      case 'maintenance_deleted':
+      case 'overlap_approval':
+        linkLabel = 'Unterhalt im Kalender →';
+        break;
+      case 'arrival_reminder':
+        linkLabel = 'Anreise-Briefing →';
+        break;
+      case 'handover_reminder':
+        linkLabel = 'Übergabe erfassen →';
+        break;
+      case 'handover_note':
+        linkLabel = 'Übergabe-Notiz lesen →';
+        break;
+      case 'chat_message':
+        linkLabel = 'Zum Chat →';
+        break;
+      case 'test':
+        linkLabel = 'Profil öffnen →';
+        break;
+      default:
+        linkLabel = 'Im Kalender öffnen →';
+        break;
+    }
+
+    return {
+      type: n.type,
+      reservationId: targetResId,
+      date: extractedDate,
+      maintenanceId: targetMaintId,
+      workingDayId: targetWdId,
+      action: targetAction,
+      route: targetRoute,
+      linkLabel
+    };
+  }
+
   renderCurrentList() {
     const listEl = this.overlayEl ? this.overlayEl.querySelector('#notif-list-container') : null;
     if (!listEl) return;
@@ -413,33 +583,22 @@ export class NotificationBadge {
 
     listEl.innerHTML = items
       .map((n) => {
+        const target = this.resolveDeepLinkTarget(n);
         const icon = this.getTypeIcon(n.type);
         const unreadCls = !n.is_read ? 'is-unread' : '';
         const timeFormatted = this.formatDate(n.created_at);
-        let extractedDate = '';
-        if (n.action_payload && n.action_payload.date) {
-          extractedDate = n.action_payload.date;
-        } else if (n.action_payload && Array.isArray(n.action_payload.proposed_dates) && n.action_payload.proposed_dates[0]) {
-          extractedDate = n.action_payload.proposed_dates[0];
-        } else {
-          const dateMatch = n.message?.match(/\b\d{4}-\d{2}-\d{2}\b/);
-          extractedDate = dateMatch ? dateMatch[0] : '';
-        }
-
-        let targetResId = n.related_reservation_id || '';
-        if (!targetResId && n.action_payload && n.action_payload.reservation_id) {
-          targetResId = n.action_payload.reservation_id;
-        }
-
-        const isClickable = !!targetResId || !!extractedDate;
         const cleanMsg = this.cleanMessage(n.message);
+        const targetJson = JSON.stringify(target).replace(/'/g, '&#39;');
 
         return `
-          <div class="notif-item ${unreadCls}" data-id="${n.id}" data-res-id="${targetResId}" data-date="${extractedDate}" style="${isClickable ? 'cursor: pointer;' : ''}">
+          <div class="notif-item ${unreadCls}" data-id="${n.id}" data-target='${targetJson}' role="button" tabindex="0" aria-label="${this.escapeHtml(cleanMsg)} — ${this.escapeHtml(target.linkLabel)}" style="cursor: pointer;">
             <span class="notif-item__icon">${icon}</span>
             <div class="notif-item__body">
               <div class="notif-item__message">${this.escapeHtml(cleanMsg)}</div>
-              <div class="notif-item__time">${timeFormatted}${isClickable ? ' · <span style="text-decoration: underline;">Im Kalender öffnen →</span>' : ''}</div>
+              <div class="notif-item__footer">
+                <span class="notif-item__time">${timeFormatted}</span>
+                <span class="notif-item__link-badge">${this.escapeHtml(target.linkLabel)}</span>
+              </div>
             </div>
           </div>
         `;
@@ -447,20 +606,30 @@ export class NotificationBadge {
       .join('');
 
     listEl.querySelectorAll('.notif-item').forEach((item) => {
-      item.addEventListener('click', async () => {
+      const handleAction = async () => {
         const notifId = item.dataset.id ? (parseInt(item.dataset.id, 10) || item.dataset.id) : null;
-        const resId = item.dataset.resId || null;
-        const targetDate = item.dataset.date || null;
+        let target = null;
+        try {
+          target = JSON.parse(item.dataset.target);
+        } catch (e) {
+          target = {};
+        }
 
         if (item.classList.contains('is-unread')) {
           await this.markRead([notifId]);
         }
 
+        this.closeDrawer();
         if (typeof this.options.onNotificationClick === 'function') {
-          if (resId || targetDate) {
-            this.closeDrawer();
-            this.options.onNotificationClick({ reservationId: resId, date: targetDate });
-          }
+          this.options.onNotificationClick(target);
+        }
+      };
+
+      item.addEventListener('click', handleAction);
+      item.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleAction();
         }
       });
     });

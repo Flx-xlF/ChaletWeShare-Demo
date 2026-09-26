@@ -30,8 +30,8 @@ Explore the fully interactive, client-side demo directly in your browser:
 
 ### 1. 📅 Conflict-Free Reservation Engine & Split Slots
 * **Same-Day Turnover:** Supports split check-in (14:00) and check-out (11:00) slots so co-owners can transition on the same day without blocking artificial buffer days.
-* **Smart Overlap Validation:** Prevents concurrent bookings while allowing adjacent stays and scheduled maintenance windows.
-* **Maintenance & Workdays:** Schedule deep cleaning, heating inspections, or renovation days with morning, afternoon, or full-day allocations.
+* **Double-Booking & Collision Awareness:** Real-time overlap collision detection with high-contrast amber/black hazard stripes, collision banners, and side-by-side conflict resolution sheets.
+* **Interactive Maintenance & Workdays:** Schedule and edit deep cleaning, chimney sweeps, or renovation days with morning, afternoon, or full-day allocations directly from the calendar.
 
 ### 2. ⚖️ Democratic 48-Hour Veto Window & Fair-Share Rules
 * **Objection Period:** Proposed stays are placed in a 48-hour *pending* state, giving all co-owners fair notice to approve or file a veto before auto-confirmation.
@@ -43,9 +43,10 @@ Explore the fully interactive, client-side demo directly in your browser:
 * **Service Worker Caching:** Instantly loads the application shell and offline-first data layer on low-bandwidth mountain connections.
 * **Installable App:** Native-like standalone installation for iOS and Android home screens with customized alpine icons.
 
-### 4. 📝 Digital Handover Hub & Incident Reports
+### 4. 📝 Digital Handover Hub & Read Acknowledgment
 * **Arrival & Departure Briefings:** Track firewood levels, waste disposal schedules, key lockbox codes, and house guidelines.
-* **Actionable Notification Center:** Real-time in-app badge hub for incoming booking alerts, pending veto deadlines, and handover notices.
+* **Two-Way Read Receipts:** Subsequent guests can acknowledge handover notes with a single tap (`[✓ Gelesen bestätigen]`), updating status in real-time.
+* **Actionable Notification Center:** Real-time in-app badge hub for incoming booking alerts, pending veto deadlines, and handover notices with calendar deep-linking.
 * **Contextual Incident Logging:** Report broken equipment or necessary repairs directly linked to stays for effortless co-owner coordination.
 
 ### 5. 🎨 Neo-Brutalist Aesthetic & Alpine Pixel Avatars

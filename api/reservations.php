@@ -135,10 +135,45 @@ switch ($action) {
             // Silently fallback if table doesn't exist yet
         }
 
+        // Fetch handover note counts
+        $handoverMap = [];
+        try {
+            $hoStmt = $pdo->query("SELECT reservation_id, COUNT(*) as cnt FROM handover_notes GROUP BY reservation_id");
+            if ($hoStmt) {
+                foreach ($hoStmt->fetchAll() as $row) {
+                    $handoverMap[$row['reservation_id']] = (int)$row['cnt'];
+                }
+            }
+        } catch (\Throwable $e) {}
+
+        // Fetch conflict resolutions
+        $resolutionsMap = [];
+        try {
+            $crStmt = $pdo->query("
+                SELECT cr.reservation_id, cr.resolution_type, cr.winner_user_id, cr.resolved_at,
+                       u.name as winner_name, u.avatar as winner_avatar
+                FROM conflict_resolutions cr
+                LEFT JOIN users u ON cr.winner_user_id = u.id
+            ");
+            if ($crStmt) {
+                foreach ($crStmt->fetchAll() as $row) {
+                    $resolutionsMap[$row['reservation_id']] = [
+                        'resolution_type' => $row['resolution_type'],
+                        'winner_user_id' => $row['winner_user_id'] ? (int)$row['winner_user_id'] : null,
+                        'winner_name' => $row['winner_name'],
+                        'winner_avatar' => $row['winner_avatar'],
+                        'resolved_at' => $row['resolved_at']
+                    ];
+                }
+            }
+        } catch (\Throwable $e) {}
+
         foreach ($reservations as &$res) {
             $res['approvals'] = $approvalsMap[$res['id']] ?? [];
             $res['vetoes'] = $vetoesMap[$res['id']] ?? [];
             $res['conflict_proposal'] = $proposalsMap[$res['id']] ?? null;
+            $res['handover_count'] = $handoverMap[$res['id']] ?? 0;
+            $res['resolution'] = $resolutionsMap[$res['id']] ?? null;
         }
         unset($res);
 
@@ -288,7 +323,7 @@ switch ($action) {
                 SELECT r.id, r.date_start, r.date_end, r.status, u.name as user_name
                 FROM reservations r
                 JOIN users u ON r.user_id = u.id
-                WHERE r.status IN ('pending', 'booked', 'shared')
+                WHERE r.status IN ('pending', 'booked', 'shared', 'vetoed')
                   AND r.date_start < ?
                   AND r.date_end > ?
             ");
@@ -437,12 +472,19 @@ switch ($action) {
                 $pushTitle = 'ChaletWeShare: Neue Reservation';
             }
 
+            $actionPayload = json_encode([
+                'reservation_id' => (int) $resId,
+                'date' => $dateStart,
+                'date_start' => $dateStart,
+                'date_end' => $dateEnd,
+                'type' => $notifType
+            ]);
             $notifIns = $pdo->prepare("
-                INSERT INTO notifications (user_id, type, message, related_reservation_id, created_at)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO notifications (user_id, type, message, related_reservation_id, action_payload, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
             ");
             foreach ($otherUsers as $ou) {
-                $notifIns->execute([$ou['id'], $notifType, $notifMsg, $resId, $now->format('Y-m-d H:i:s')]);
+                $notifIns->execute([$ou['id'], $notifType, $notifMsg, $resId, $actionPayload, $now->format('Y-m-d H:i:s')]);
             }
 
             $pdo->commit();
@@ -453,8 +495,12 @@ switch ($action) {
             jsonResponse(['success' => false, 'error' => 'Fehler beim Speichern der Reservation: ' . $e->getMessage()], 500);
         }
 
-        // Dispatch Web Push to all other siblings
-        sendWebPushToAll($pdo, $user['id'], $pushTitle, $notifMsg, ['reservation_id' => $resId]);
+        // Dispatch Web Push to all other siblings with full deep link info
+        sendWebPushToAll($pdo, $user['id'], $pushTitle, $notifMsg, [
+            'reservation_id' => (int) $resId,
+            'date' => $dateStart,
+            'type' => $notifType
+        ]);
 
         jsonResponse([
             'success' => true,
@@ -506,16 +552,27 @@ switch ($action) {
         $otherUsersStmt = $pdo->prepare("SELECT id FROM users WHERE id != ?");
         $otherUsersStmt->execute([$user['id']]);
         $notifMsg = "Daten wieder frei: {$user['name']} hat die Reservation ({$res['date_start']} bis {$res['date_end']}) storniert.";
+        $actionPayload = json_encode([
+            'reservation_id' => (int) $resId,
+            'date' => $res['date_start'],
+            'date_start' => $res['date_start'],
+            'date_end' => $res['date_end'],
+            'type' => 'cancellation'
+        ]);
         $notifIns = $pdo->prepare("
-            INSERT INTO notifications (user_id, type, message, related_reservation_id, created_at)
-            VALUES (?, 'cancellation', ?, ?, ?)
+            INSERT INTO notifications (user_id, type, message, related_reservation_id, action_payload, created_at)
+            VALUES (?, 'cancellation', ?, ?, ?, ?)
         ");
         foreach ($otherUsersStmt->fetchAll() as $ou) {
-            $notifIns->execute([$ou['id'], $notifMsg, $resId, $now->format('Y-m-d H:i:s')]);
+            $notifIns->execute([$ou['id'], $notifMsg, $resId, $actionPayload, $now->format('Y-m-d H:i:s')]);
         }
 
-        // Dispatch Web Push to all other siblings
-        sendWebPushToAll($pdo, $user['id'], 'ChaletWeShare: Daten wieder frei', $notifMsg, ['reservation_id' => $resId]);
+        // Dispatch Web Push to all other siblings with freed date deep link
+        sendWebPushToAll($pdo, $user['id'], 'ChaletWeShare: Daten wieder frei', $notifMsg, [
+            'reservation_id' => (int) $resId,
+            'date' => $res['date_start'],
+            'type' => 'cancellation'
+        ]);
 
         jsonResponse(['success' => true, 'message' => 'Reservation erfolgreich storniert.']);
         break;
@@ -577,12 +634,16 @@ switch ($action) {
             INSERT INTO notifications (user_id, type, message, action_payload, created_at)
             VALUES (?, 'maintenance_created', ?, ?, ?)
         ");
-        $actionPayload = json_encode(['maintenance_id' => (int) $maintId, 'date' => $dateStart]);
+        $actionPayload = json_encode(['maintenance_id' => (int) $maintId, 'date' => $dateStart, 'type' => 'maintenance_created']);
         foreach ($otherUsers as $ou) {
             $notifIns->execute([$ou['id'], $notifMsg, $actionPayload, $now->format('Y-m-d H:i:s')]);
         }
 
-        sendWebPushToAll($pdo, $user['id'], 'ChaletWeShare: Unterhalt eingetragen', $notifMsg, ['maintenance_id' => (int) $maintId]);
+        sendWebPushToAll($pdo, $user['id'], 'ChaletWeShare: Unterhalt eingetragen', $notifMsg, [
+            'maintenance_id' => (int) $maintId,
+            'date' => $dateStart,
+            'type' => 'maintenance_created'
+        ]);
 
         jsonResponse([
             'success' => true,
@@ -597,6 +658,100 @@ switch ($action) {
                 'reason' => $reason
             ]
         ], 201);
+        break;
+
+    case 'update_maintenance':
+        $profileId = $input['profile_id'] ?? '';
+        $syncToken = $input['sync_token'] ?? '';
+        $user = authenticateUser($pdo, $profileId, $syncToken);
+        if (!$user) {
+            jsonResponse(['success' => false, 'error' => 'Nicht autorisiert.'], 401);
+        }
+
+        $maintId = (int) ($input['maintenance_id'] ?? 0);
+        if (!$maintId) {
+            jsonResponse(['success' => false, 'error' => 'Blockierungs-ID erforderlich.'], 400);
+        }
+
+        $chkStmt = $pdo->prepare("SELECT id, user_id, date_start, date_end, half_day, reason FROM maintenance_blocks WHERE id = ?");
+        $chkStmt->execute([$maintId]);
+        $maint = $chkStmt->fetch();
+
+        if (!$maint) {
+            jsonResponse(['success' => false, 'error' => 'Unterhaltseintrag nicht gefunden.'], 404);
+        }
+
+        if ($maint['user_id'] != $user['id']) {
+            jsonResponse(['success' => false, 'error' => 'Nur der Ersteller kann diesen Unterhaltseintrag bearbeiten.'], 403);
+        }
+
+        $halfDay = trim($input['half_day'] ?? $maint['half_day']); // 'full' | 'morning' | 'afternoon'
+        $reason = trim($input['reason'] ?? $maint['reason']);
+        if (!$reason) $reason = 'Unterhalt';
+
+        // Collision check if expanding to full day
+        if ($halfDay === 'full') {
+            $collStmt = $pdo->prepare("
+                SELECT r.id, r.date_start, r.date_end, u.name as user_name
+                FROM reservations r
+                JOIN users u ON r.user_id = u.id
+                WHERE r.status = 'booked'
+                  AND r.date_start <= ?
+                  AND r.date_end >= ?
+            ");
+            $collStmt->execute([$maint['date_end'], $maint['date_start']]);
+            $bookedColl = $collStmt->fetch();
+            if ($bookedColl) {
+                jsonResponse([
+                    'success' => false,
+                    'error' => "An diesem Datum liegt bereits eine feste Buchung von {$bookedColl['user_name']} vor. Unterhalt kann nicht ganztags gesperrt werden."
+                ], 409);
+            }
+        }
+
+        $updStmt = $pdo->prepare("
+            UPDATE maintenance_blocks
+            SET half_day = ?, reason = ?
+            WHERE id = ?
+        ");
+        $updStmt->execute([$halfDay, $reason, $maintId]);
+
+        // In-app notifications
+        $now = new DateTime('now', new DateTimeZone('Europe/Zurich'));
+        $otherUsersStmt = $pdo->prepare("SELECT id FROM users WHERE id != ?");
+        $otherUsersStmt->execute([$user['id']]);
+        $otherUsers = $otherUsersStmt->fetchAll();
+
+        $halfDayLabel = $halfDay === 'morning' ? ' (Vormittag)' : ($halfDay === 'afternoon' ? ' (Nachmittag)' : ' (Ganzer Tag)');
+        $notifMsg = "Unterhalt angepasst: {$user['name']} hat Unterhalt ({$maint['date_start']} bis {$maint['date_end']}) aktualisiert: {$halfDayLabel}, Grund: {$reason}.";
+        $notifIns = $pdo->prepare("
+            INSERT INTO notifications (user_id, type, message, action_payload, created_at)
+            VALUES (?, 'maintenance_updated', ?, ?, ?)
+        ");
+        $actionPayload = json_encode(['maintenance_id' => (int) $maintId, 'date' => $maint['date_start'], 'type' => 'maintenance_updated']);
+        foreach ($otherUsers as $ou) {
+            $notifIns->execute([$ou['id'], $notifMsg, $actionPayload, $now->format('Y-m-d H:i:s')]);
+        }
+
+        sendWebPushToAll($pdo, $user['id'], 'ChaletWeShare: Unterhalt angepasst', $notifMsg, [
+            'maintenance_id' => (int) $maintId,
+            'date' => $maint['date_start'],
+            'type' => 'maintenance_updated'
+        ]);
+
+        jsonResponse([
+            'success' => true,
+            'message' => 'Unterhalt erfolgreich aktualisiert.',
+            'maintenance' => [
+                'id' => (int) $maintId,
+                'user_id' => (int) $user['id'],
+                'user_name' => $user['name'],
+                'date_start' => $maint['date_start'],
+                'date_end' => $maint['date_end'],
+                'half_day' => $halfDay,
+                'reason' => $reason
+            ]
+        ]);
         break;
 
     case 'delete_maintenance':
@@ -636,12 +791,16 @@ switch ($action) {
             INSERT INTO notifications (user_id, type, message, action_payload, created_at)
             VALUES (?, 'maintenance_deleted', ?, ?, ?)
         ");
-        $actionPayload = json_encode(['date' => $maint['date_start']]);
+        $actionPayload = json_encode(['maintenance_id' => (int) $maintId, 'date' => $maint['date_start'], 'type' => 'maintenance_deleted']);
         foreach ($otherUsersStmt->fetchAll() as $ou) {
             $notifIns->execute([$ou['id'], $notifMsg, $actionPayload, $now->format('Y-m-d H:i:s')]);
         }
 
-        sendWebPushToAll($pdo, $user['id'], 'ChaletWeShare: Unterhalt entfernt', $notifMsg, ['maintenance_id' => $maintId]);
+        sendWebPushToAll($pdo, $user['id'], 'ChaletWeShare: Unterhalt entfernt', $notifMsg, [
+            'maintenance_id' => (int) $maintId,
+            'date' => $maint['date_start'],
+            'type' => 'maintenance_deleted'
+        ]);
 
         jsonResponse(['success' => true, 'message' => 'Unterhaltsblockierung entfernt.']);
         break;
@@ -686,13 +845,19 @@ switch ($action) {
 
         // Insert notification for reservation owner
         $ownerMsg = "⚠️ {$user['name']} hat ein Veto gegen deine Reservation ({$res['date_start']} bis {$res['date_end']}) eingelegt. Bitte im Dashboard prüfen.";
+        $vetoPayload = json_encode([
+            'reservation_id' => (int) $resId,
+            'date' => $res['date_start'],
+            'type' => 'veto'
+        ]);
 
-        $notifIns = $pdo->prepare("INSERT INTO notifications (user_id, type, message, related_reservation_id, created_at) VALUES (?, 'veto', ?, ?, ?)");
-        $notifIns->execute([$res['user_id'], $ownerMsg, $resId, $now->format('Y-m-d H:i:s')]);
+        $notifIns = $pdo->prepare("INSERT INTO notifications (user_id, type, message, related_reservation_id, action_payload, created_at) VALUES (?, 'veto', ?, ?, ?, ?)");
+        $notifIns->execute([$res['user_id'], $ownerMsg, $resId, $vetoPayload, $now->format('Y-m-d H:i:s')]);
 
         // Dispatch Web Push to the reservation owner
         sendWebPushToUser($pdo, $res['user_id'], 'ChaletWeShare: Veto eingelegt', $ownerMsg, [
             'reservation_id' => $resId,
+            'date' => $res['date_start'],
             'type' => 'veto',
             'status' => 'vetoed'
         ]);
@@ -702,11 +867,12 @@ switch ($action) {
         $otherSiblingsStmt->execute([$user['id'], $res['user_id']]);
         $siblingMsg = "⚠️ {$user['name']} hat ein Veto gegen die Reservation ({$res['date_start']} bis {$res['date_end']}) eingelegt.";
         foreach ($otherSiblingsStmt->fetchAll() as $s) {
-            $notifIns->execute([$s['id'], $siblingMsg, $resId, $now->format('Y-m-d H:i:s')]);
+            $notifIns->execute([$s['id'], $siblingMsg, $resId, $vetoPayload, $now->format('Y-m-d H:i:s')]);
         }
 
         sendWebPushToAll($pdo, [$user['id'], $res['user_id']], 'ChaletWeShare: Veto eingelegt', $siblingMsg, [
             'reservation_id' => $resId,
+            'date' => $res['date_start'],
             'type' => 'veto',
             'status' => 'vetoed'
         ]);
@@ -764,9 +930,18 @@ switch ($action) {
         if ($resObj) {
             $now = new DateTime('now', new DateTimeZone('Europe/Zurich'));
             $msg = "✅ {$user['name']} hat das Veto gegen deine Reservation ({$resObj['date_start']} bis {$resObj['date_end']}) zurückgezogen.";
-            $notifIns = $pdo->prepare("INSERT INTO notifications (user_id, type, message, related_reservation_id, created_at) VALUES (?, 'veto_withdrawn', ?, ?, ?)");
-            $notifIns->execute([$resObj['user_id'], $msg, $resId, $now->format('Y-m-d H:i:s')]);
-            sendWebPushToUser($pdo, $resObj['user_id'], 'ChaletWeShare: Veto zurückgezogen', $msg, ['reservation_id' => $resId]);
+            $withdrawnPayload = json_encode([
+                'reservation_id' => (int) $resId,
+                'date' => $resObj['date_start'],
+                'type' => 'veto_withdrawn'
+            ]);
+            $notifIns = $pdo->prepare("INSERT INTO notifications (user_id, type, message, related_reservation_id, action_payload, created_at) VALUES (?, 'veto_withdrawn', ?, ?, ?, ?)");
+            $notifIns->execute([$resObj['user_id'], $msg, $resId, $withdrawnPayload, $now->format('Y-m-d H:i:s')]);
+            sendWebPushToUser($pdo, $resObj['user_id'], 'ChaletWeShare: Veto zurückgezogen', $msg, [
+                'reservation_id' => $resId,
+                'date' => $resObj['date_start'],
+                'type' => 'veto_withdrawn'
+            ]);
         }
 
         jsonResponse([
@@ -830,12 +1005,22 @@ switch ($action) {
             $targets = [(int)$res['user_id']];
         }
 
-        $notifIns = $pdo->prepare("INSERT INTO notifications (user_id, type, message, related_reservation_id, created_at) VALUES (?, 'conflict_proposal', ?, ?, ?)");
+        $propPayload = json_encode([
+            'reservation_id' => (int) $resId,
+            'date' => $res['date_start'],
+            'proposal_type' => $proposalType,
+            'type' => 'conflict_proposal'
+        ]);
+        $notifIns = $pdo->prepare("INSERT INTO notifications (user_id, type, message, related_reservation_id, action_payload, created_at) VALUES (?, 'conflict_proposal', ?, ?, ?, ?)");
         $notifMsg = "💬 {$user['name']} hat einen Lösungsvorschlag ({$propLabel}) für euren Konflikt ({$res['date_start']} bis {$res['date_end']}) vorgeschlagen. Bitte im Dashboard antworten.";
         foreach ($targets as $tid) {
             if ($tid != $user['id']) {
-                $notifIns->execute([$tid, $notifMsg, $resId, $nowStr]);
-                sendWebPushToUser($pdo, $tid, 'ChaletWeShare: Lösungsvorschlag', $notifMsg, ['reservation_id' => $resId]);
+                $notifIns->execute([$tid, $notifMsg, $resId, $propPayload, $nowStr]);
+                sendWebPushToUser($pdo, $tid, 'ChaletWeShare: Lösungsvorschlag', $notifMsg, [
+                    'reservation_id' => $resId,
+                    'date' => $res['date_start'],
+                    'type' => 'conflict_proposal'
+                ]);
             }
         }
 
@@ -944,11 +1129,21 @@ switch ($action) {
             array_map('intval', $vetoUserIds)
         )));
 
-        $notifIns = $pdo->prepare("INSERT INTO notifications (user_id, type, message, related_reservation_id, created_at) VALUES (?, 'resolved', ?, ?, ?)");
+        $resolvedPayload = json_encode([
+            'reservation_id' => (int) $resId,
+            'date' => $res['date_start'],
+            'resolution_type' => $resType,
+            'type' => 'resolved'
+        ]);
+        $notifIns = $pdo->prepare("INSERT INTO notifications (user_id, type, message, related_reservation_id, action_payload, created_at) VALUES (?, 'resolved', ?, ?, ?, ?)");
         foreach ($involvedUserIds as $targetUserId) {
             if ($targetUserId != $user['id']) {
-                $notifIns->execute([$targetUserId, $notifMsg, $resId, $now->format('Y-m-d H:i:s')]);
-                sendWebPushToUser($pdo, $targetUserId, 'ChaletWeShare: Konflikt gelöst', $notifMsg, ['reservation_id' => $resId]);
+                $notifIns->execute([$targetUserId, $notifMsg, $resId, $resolvedPayload, $now->format('Y-m-d H:i:s')]);
+                sendWebPushToUser($pdo, $targetUserId, 'ChaletWeShare: Konflikt gelöst', $notifMsg, [
+                    'reservation_id' => $resId,
+                    'date' => $res['date_start'],
+                    'type' => 'resolved'
+                ]);
             }
         }
 
@@ -1032,10 +1227,16 @@ switch ($action) {
 
             // Notify the reservation owner
             $confMsg = "🎉 Alle Geschwister einverstanden! Deine Reservation ({$res['date_start']} bis {$res['date_end']}) ist jetzt fest gebucht.";
-            $notifIns = $pdo->prepare("INSERT INTO notifications (user_id, type, message, related_reservation_id, created_at) VALUES (?, 'all_approved', ?, ?, ?)");
-            $notifIns->execute([$res['user_id'], $confMsg, $resId, $nowStr]);
+            $allApprovedPayload = json_encode([
+                'reservation_id' => (int) $resId,
+                'date' => $res['date_start'],
+                'type' => 'all_approved'
+            ]);
+            $notifIns = $pdo->prepare("INSERT INTO notifications (user_id, type, message, related_reservation_id, action_payload, created_at) VALUES (?, 'all_approved', ?, ?, ?, ?)");
+            $notifIns->execute([$res['user_id'], $confMsg, $resId, $allApprovedPayload, $nowStr]);
             sendWebPushToUser($pdo, $res['user_id'], 'ChaletWeShare: Fest gebucht', $confMsg, [
                 'reservation_id' => $resId,
+                'date' => $res['date_start'],
                 'tag' => 'res-' . $resId,
                 'type' => 'all_approved',
                 'status' => 'booked'
@@ -1045,6 +1246,7 @@ switch ($action) {
             $allSiblingsMsg = "🎉 Reservation von {$res['user_name']} ({$res['date_start']} bis {$res['date_end']}) ist jetzt von allen bestätigt und fest gebucht.";
             sendWebPushToAll($pdo, [$res['user_id'], $user['id']], 'ChaletWeShare: Fest gebucht', $allSiblingsMsg, [
                 'reservation_id' => $resId,
+                'date' => $res['date_start'],
                 'tag' => 'res-' . $resId,
                 'type' => 'all_approved',
                 'status' => 'booked'
@@ -1065,9 +1267,14 @@ switch ($action) {
                 $delOldAppr->execute([$res['user_id'], $resId]);
             } catch (\Throwable $e) {}
 
-            $notifyOwner = $pdo->prepare("INSERT INTO notifications (user_id, type, message, related_reservation_id, created_at) VALUES (?, 'approval', ?, ?, ?)");
+            $apprPayload = json_encode([
+                'reservation_id' => (int) $resId,
+                'date' => $res['date_start'],
+                'type' => 'approval'
+            ]);
+            $notifyOwner = $pdo->prepare("INSERT INTO notifications (user_id, type, message, related_reservation_id, action_payload, created_at) VALUES (?, 'approval', ?, ?, ?, ?)");
             $ownerMsg = "👍 {$user['name']} hat deiner Reservation ({$res['date_start']} bis {$res['date_end']}) zugestimmt ({$currentApprCount}/{$otherUsersCount}).";
-            $notifyOwner->execute([$res['user_id'], $ownerMsg, $resId, $nowStr]);
+            $notifyOwner->execute([$res['user_id'], $ownerMsg, $resId, $apprPayload, $nowStr]);
 
             // Note: Loud Web Push is intentionally omitted here to prevent vibration spam for each sibling.
             // Full celebratory Web Push is triggered when allApproved is reached.

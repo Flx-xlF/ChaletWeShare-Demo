@@ -30,6 +30,12 @@ switch ($action) {
     case 'list_for_reservation':
         handleListNotes($pdo);
         break;
+    case 'list_recent':
+        handleListRecentNotes($pdo);
+        break;
+    case 'acknowledge':
+        handleAcknowledgeNote($pdo, $input);
+        break;
     case 'check_prompt':
         handleCheckPrompt($pdo, $input);
         break;
@@ -114,24 +120,37 @@ function handleCreateNote(PDO $pdo, $input) {
     // Dispatch notification to next reservation owner if present
     if ($nextRes) {
         $notifMsg = "📝 {$user['name']} hat eine Übergabe-Notiz ({$catLabel}) für deinen kommenden Aufenthalt hinterlassen: \"{$message}\"";
+        $handoverPayload = json_encode([
+            'reservation_id' => (int) $nextRes['id'],
+            'date' => $nextRes['date_start'],
+            'action' => 'handover_note',
+            'target_reservation_id' => (int) $reservationId,
+            'type' => 'handover_note'
+        ]);
         $notifStmt = $pdo->prepare("
-            INSERT INTO notifications (user_id, type, message, related_reservation_id, created_at)
-            VALUES (:uid, 'handover_note', :msg, :rel_id, :now)
+            INSERT INTO notifications (user_id, type, message, related_reservation_id, action_payload, created_at)
+            VALUES (:uid, 'handover_note', :msg, :rel_id, :payload, :now)
         ");
         $notifStmt->execute([
             ':uid' => $nextRes['user_id'],
             ':msg' => $notifMsg,
             ':rel_id' => $nextRes['id'],
+            ':payload' => $handoverPayload,
             ':now' => $now
         ]);
 
-        // Web push to next user
+        // Web push to next user with deep link date
         sendWebPushToUser(
             $pdo,
             $nextRes['user_id'],
             'Chalet Alpenrose — Übergabe-Notiz',
             $notifMsg,
-            ['reservation_id' => $nextRes['id']]
+            [
+                'reservation_id' => (int) $nextRes['id'],
+                'date' => $nextRes['date_start'],
+                'action' => 'handover_note',
+                'type' => 'handover_note'
+            ]
         );
     }
 
@@ -159,6 +178,30 @@ function handleListNotes(PDO $pdo) {
         jsonResponse(['error' => 'reservation_id erforderlich.'], 400);
     }
 
+    $resStmt = $pdo->prepare("SELECT id, date_start, date_end FROM reservations WHERE id = :id LIMIT 1");
+    $resStmt->execute([':id' => $reservationId]);
+    $currentRes = $resStmt->fetch();
+
+    $priorResId = null;
+    if ($currentRes) {
+        $priorStmt = $pdo->prepare("
+            SELECT id FROM reservations 
+            WHERE date_end <= :cur_start 
+              AND id != :cur_id
+              AND status IN ('booked', 'pending', 'shared')
+            ORDER BY date_end DESC 
+            LIMIT 1
+        ");
+        $priorStmt->execute([
+            ':cur_start' => $currentRes['date_start'],
+            ':cur_id' => $currentRes['id']
+        ]);
+        $priorRow = $priorStmt->fetch();
+        if ($priorRow) {
+            $priorResId = (int)$priorRow['id'];
+        }
+    }
+
     $stmt = $pdo->prepare("
         SELECT hn.*, 
                u.name as author_name, 
@@ -167,14 +210,95 @@ function handleListNotes(PDO $pdo) {
         JOIN users u ON hn.author_user_id = u.id
         WHERE hn.target_reservation_id = :res_id 
            OR hn.reservation_id = :res_id
+           OR (:prior_id IS NOT NULL AND hn.reservation_id = :prior_id)
         ORDER BY hn.created_at DESC
     ");
-    $stmt->execute([':res_id' => $reservationId]);
+    $stmt->execute([
+        ':res_id' => $reservationId,
+        ':prior_id' => $priorResId
+    ]);
     $notes = $stmt->fetchAll();
+
+    foreach ($notes as &$n) {
+        $n['id'] = (int)$n['id'];
+        $n['reservation_id'] = (int)$n['reservation_id'];
+        $n['author_user_id'] = (int)$n['author_user_id'];
+        $n['target_reservation_id'] = $n['target_reservation_id'] ? (int)$n['target_reservation_id'] : null;
+        $n['is_acknowledged'] = !empty($n['is_acknowledged']) ? 1 : 0;
+        $n['is_departure_note'] = ($n['reservation_id'] == $reservationId);
+        $n['is_arrival_note'] = ($n['reservation_id'] != $reservationId);
+    }
+    unset($n);
+
+    jsonResponse([
+        'success' => true,
+        'notes' => $notes,
+        'prior_reservation_id' => $priorResId
+    ]);
+}
+
+function handleListRecentNotes(PDO $pdo) {
+    requireGateOrUser($pdo);
+    $stmt = $pdo->query("
+        SELECT hn.*, 
+               u.name as author_name, 
+               u.avatar as author_avatar,
+               r.date_start as res_date_start,
+               r.date_end as res_date_end
+        FROM handover_notes hn
+        JOIN users u ON hn.author_user_id = u.id
+        LEFT JOIN reservations r ON hn.reservation_id = r.id
+        ORDER BY hn.created_at DESC
+        LIMIT 10
+    ");
+    $notes = $stmt->fetchAll();
+    foreach ($notes as &$n) {
+        $n['id'] = (int)$n['id'];
+        $n['reservation_id'] = (int)$n['reservation_id'];
+        $n['author_user_id'] = (int)$n['author_user_id'];
+        $n['target_reservation_id'] = $n['target_reservation_id'] ? (int)$n['target_reservation_id'] : null;
+        $n['is_acknowledged'] = !empty($n['is_acknowledged']) ? 1 : 0;
+    }
+    unset($n);
 
     jsonResponse([
         'success' => true,
         'notes' => $notes
+    ]);
+}
+
+function handleAcknowledgeNote(PDO $pdo, $input) {
+    $profileId = $input['profile_id'] ?? null;
+    $syncToken = $input['sync_token'] ?? null;
+    $noteId = (int)($input['note_id'] ?? 0);
+
+    $user = authenticateUser($pdo, $profileId, $syncToken);
+    if (!$user) {
+        jsonResponse(['error' => 'Nicht autorisiert.'], 401);
+    }
+    if (!$noteId) {
+        jsonResponse(['error' => 'note_id erforderlich.'], 400);
+    }
+
+    $now = date('Y-m-d H:i:s');
+    $upd = $pdo->prepare("
+        UPDATE handover_notes 
+        SET is_acknowledged = 1, 
+            acknowledged_by_name = :user_name, 
+            acknowledged_at = :now 
+        WHERE id = :id
+    ");
+    $upd->execute([
+        ':user_name' => $user['name'],
+        ':now' => $now,
+        ':id' => $noteId
+    ]);
+
+    jsonResponse([
+        'success' => true,
+        'note_id' => $noteId,
+        'acknowledged_by_name' => $user['name'],
+        'acknowledged_at' => $now
     ]);
 }
 

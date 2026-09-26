@@ -4,7 +4,7 @@
  */
 
 import { renderAvatarMarkup } from '../data/avatars.js';
-import { PixelWrench, PixelBroom, PixelLeaf, PixelCheck, PixelVote } from '../data/pixelIcons.js';
+import { PixelWrench, PixelBroom, PixelLeaf, PixelCheck, PixelVote, PixelClipboard, PixelHandshake } from '../data/pixelIcons.js';
 
 /**
  * Render markup for a single calendar day cell
@@ -15,12 +15,13 @@ import { PixelWrench, PixelBroom, PixelLeaf, PixelCheck, PixelVote } from '../da
  * @param {boolean} options.isCurrentMonth - whether belongs to current month
  * @param {boolean} options.isToday - whether date is today
  * @param {boolean} options.isDisabled - whether date is disabled (past or beyond window)
- * @param {string} [options.status='free'] - 'free' | 'pending' | 'booked' | 'maintenance'
+ * @param {string} [options.status='free'] - 'free' | 'pending' | 'booked' | 'maintenance' | 'shared' | 'collision' | 'doppelnutzung'
  * @param {string} [options.maintSlot='full'] - 'full' | 'morning' | 'afternoon'
  * @param {Object} [options.reservation] - reservation or maintenance info { userName, userAvatar, reason, etc. }
  * @param {boolean} [options.isSelectedStart=false]
  * @param {boolean} [options.isSelectedEnd=false]
  * @param {boolean} [options.isInRange=false]
+ * @param {boolean} [options.hasHandoverNotes=false]
  * @returns {string} HTML string for the day cell
  */
 export function renderDayCell({
@@ -36,6 +37,8 @@ export function renderDayCell({
   workingDay = null,
   checkoutInfo = null,
   checkinInfo = null,
+  hasHandoverNotes = false,
+  collidingReservations = null,
   isSelectedStart = false,
   isSelectedEnd = false,
   isInRange = false,
@@ -94,6 +97,10 @@ export function renderDayCell({
     } else {
       classes.push('day-cell--shared-checkin-pending');
     }
+  } else if (status === 'collision') {
+    classes.push('day-cell--collision');
+  } else if (status === 'doppelnutzung') {
+    classes.push('day-cell--doppelnutzung');
   } else if (status === 'maintenance') {
     if (maintSlot === 'morning') {
       classes.push('day-cell--maint-morning');
@@ -112,6 +119,12 @@ export function renderDayCell({
     ariaStatus = `Terminvorschlag Arbeitstag: ${wdObj?.season === 'autumn' ? 'Einwintern' : 'Frühjahrsputz'} (Abstimmung)`;
   } else if (status === 'shared') {
     ariaStatus = `Wechseltag: Abreise ${checkoutInfo?.userName || 'Gast'}, Anreise ${checkinInfo?.userName || 'Gast'}`;
+  } else if (status === 'collision') {
+    const collNames = (collidingReservations || []).map(r => r.userName).filter(Boolean).join(' und ') || 'Gäste';
+    ariaStatus = `Tag ${dayNumber}. Achtung: Doppelbuchung! 2 kollidierende Buchungen von ${collNames}`;
+  } else if (status === 'doppelnutzung') {
+    const doppelNames = (collidingReservations || []).map(r => r.userName || (r.isMaintenance ? 'Unterhalt' : 'Gast')).filter(Boolean).join(' und ') || 'Familie';
+    ariaStatus = `Tag ${dayNumber}. Doppelnutzung: Gemeinsamer Aufenthalt von ${doppelNames}`;
   } else if (status === 'booked') {
     if (bookingSlot === 'checkin') ariaStatus = `Anreise ab 14:00 (${reservation?.userName || 'Familie'})`;
     else if (bookingSlot === 'checkout') ariaStatus = `Abreise bis 11:00 (${reservation?.userName || 'Familie'})`;
@@ -137,6 +150,40 @@ export function renderDayCell({
         <span class="day-cell__initial day-cell__initial--out" title="Abreise: ${escapeAttr(checkoutInfo?.userName)}">${outInit}</span>
         <span class="day-cell__initial-sep">/</span>
         <span class="day-cell__initial day-cell__initial--in" title="Anreise: ${escapeAttr(checkinInfo?.userName)}">${inInit}</span>
+      </div>
+    `;
+  } else if (status === 'collision') {
+    const collList = Array.isArray(collidingReservations) && collidingReservations.length > 0 ? collidingReservations : [reservation || {}];
+    const r1 = collList[0] || {};
+    const r2 = collList[1] || {};
+    const init1 = (r1.userName || 'A').charAt(0).toUpperCase();
+    const init2 = (r2.userName || 'B').charAt(0).toUpperCase();
+    badgeHtml = `
+      <div class="day-cell__collision-wrapper">
+        <div class="day-cell__collision-avatars">
+          <span class="day-cell__initial day-cell__initial--collision" title="${escapeAttr(r1.userName)}">${init1}</span>
+          <span class="day-cell__initial day-cell__initial--collision" title="${escapeAttr(r2.userName)}">${init2}</span>
+        </div>
+        <div class="day-cell__collision-badge" title="Doppelbuchung! 2 kollidierende Reservationen">
+          <span class="day-cell__collision-icon">⚠️</span>
+          <span class="day-cell__collision-text">2x</span>
+        </div>
+      </div>
+    `;
+  } else if (status === 'doppelnutzung') {
+    const list = Array.isArray(collidingReservations) && collidingReservations.length > 0
+      ? collidingReservations
+      : [checkoutInfo || reservation || {}, checkinInfo || {}];
+    const names = list.map(r => r.userName || (r.isMaintenance ? 'Unterhalt' : 'Gast')).filter(Boolean).join(' und ') || 'Familie';
+    const r1 = list[0] || {};
+    const r2 = list[1] || {};
+    const init1 = (r1.userName || (r1.isMaintenance ? 'W' : 'A')).charAt(0).toUpperCase();
+    const init2 = (r2.userName || (r2.isMaintenance ? 'W' : 'B')).charAt(0).toUpperCase();
+    badgeHtml = `
+      <div class="day-cell__doppelnutzung-badge" title="Doppelnutzung: ${escapeAttr(names)}">
+        <span class="day-cell__initial day-cell__initial--doppel">${init1}</span>
+        <span class="day-cell__handshake-icon">🤝</span>
+        <span class="day-cell__initial day-cell__initial--doppel">${init2}</span>
       </div>
     `;
   } else if (status === 'booked' || status === 'pending') {
@@ -259,7 +306,10 @@ export function renderDayCell({
       ${splitOverlayHtml}
       <div class="day-cell__header">
         <span class="day-cell__num">${dayNumber}</span>
-        ${isToday ? '<span class="day-cell__today-tag">HEUTE</span>' : ''}
+        <div style="display: flex; align-items: center; gap: 3px;">
+          ${hasHandoverNotes ? `<span class="day-cell__handover-badge" title="Übergabe-Notiz vorhanden">${PixelClipboard}</span>` : ''}
+          ${isToday ? '<span class="day-cell__today-tag">HEUTE</span>' : ''}
+        </div>
       </div>
       <div class="day-cell__body">
         ${badgeHtml}

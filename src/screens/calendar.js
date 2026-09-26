@@ -28,6 +28,7 @@ import { openDayDetailSheet } from '../components/dayDetailSheet.js';
 import { openConflictModal } from '../components/conflictModal.js';
 import { handoverService } from '../engine/handoverService.js';
 import { openHandoverModal } from '../components/handoverModal.js';
+import { openMicroChat } from '../components/microChat.js';
 import { PixelHome, PixelWrench, PixelBroom, PixelWarning, PixelCalendar, PixelCheck, PixelCancel } from '../data/pixelIcons.js';
 import { exportReservationToCalendar } from '../utils/icsUtils.js';
 import { escapeHtml } from '../utils/htmlUtils.js';
@@ -356,6 +357,8 @@ export class CalendarScreen {
           workingDay: dayData.workingDay,
           checkoutInfo: dayData.checkoutInfo,
           checkinInfo: dayData.checkinInfo,
+          hasHandoverNotes: dayData.hasHandoverNotes || false,
+          collidingReservations: dayData.collidingReservations || null,
           isSelectedStart,
           isSelectedEnd,
           isInRange,
@@ -902,14 +905,22 @@ export class CalendarScreen {
   /**
    * Open details or conflict resolution modal for a specific reservation ID
    * @param {number|string} reservationId
+   * @param {string} [fallbackDate]
    */
-  async openReservation(reservationId) {
+  async openReservation(reservationId, fallbackDate = null) {
     let res = reservationStore.reservations.find((r) => r.id == reservationId);
     if (!res) {
       await reservationEngine.loadCalendarData();
       res = reservationStore.reservations.find((r) => r.id == reservationId);
     }
-    if (!res) return;
+
+    if (!res) {
+      // If reservation no longer exists (e.g. cancelled) but we have a fallback date, navigate there
+      if (fallbackDate) {
+        await this.openDate(fallbackDate);
+      }
+      return;
+    }
 
     // Scroll to the reservation in the continuous feed
     const targetCell = this.mountEl.querySelector(`[data-date="${res.dateStart}"]`);
@@ -959,5 +970,138 @@ export class CalendarScreen {
         }
       });
     }
+  }
+
+  /**
+   * Open details / voting / RSVP for a working day
+   * @param {number|string} workingDayId
+   * @param {string} [fallbackDate]
+   */
+  async openWorkingDay(workingDayId, fallbackDate = null) {
+    let wd = reservationStore.workingDays.find((w) => w.id == workingDayId);
+    if (!wd) {
+      await reservationEngine.loadCalendarData();
+      wd = reservationStore.workingDays.find((w) => w.id == workingDayId);
+    }
+
+    let targetDate = fallbackDate;
+    if (wd) {
+      if (wd.date) {
+        targetDate = wd.date;
+      } else if (Array.isArray(wd.proposed_dates) && wd.proposed_dates[0]) {
+        targetDate = wd.proposed_dates[0];
+      } else if (Array.isArray(wd.proposedDates) && wd.proposedDates[0]) {
+        targetDate = wd.proposedDates[0];
+      }
+    }
+
+    if (targetDate) {
+      await this.openDate(targetDate);
+    }
+  }
+
+  /**
+   * Open maintenance block in calendar
+   * @param {number|string} maintenanceId
+   * @param {string} [fallbackDate]
+   */
+  async openMaintenance(maintenanceId, fallbackDate = null) {
+    let m = reservationStore.maintenanceBlocks?.find((b) => b.id == maintenanceId);
+    if (!m) {
+      await reservationEngine.loadCalendarData();
+      m = reservationStore.maintenanceBlocks?.find((b) => b.id == maintenanceId);
+    }
+
+    const targetDate = m ? (m.dateStart || m.date_start) : fallbackDate;
+    if (targetDate) {
+      await this.openDate(targetDate);
+    }
+  }
+
+  /**
+   * Open micro-chat for a specific reservation
+   * @param {number|string} reservationId
+   */
+  async openMicroChatForReservation(reservationId) {
+    let res = reservationStore.reservations.find((r) => r.id == reservationId);
+    if (!res) {
+      await reservationEngine.loadCalendarData();
+      res = reservationStore.reservations.find((r) => r.id == reservationId);
+    }
+    if (!res) return;
+
+    const modalContainer = document.getElementById('cal-sheet-modal');
+    if (!modalContainer) return;
+
+    openMicroChat({
+      container: modalContainer,
+      reservation: res,
+      user: this.user,
+      onAction: () => {
+        this.render();
+      },
+      onClose: () => {
+        modalContainer.style.display = 'none';
+        modalContainer.innerHTML = '';
+      }
+    });
+  }
+
+  /**
+   * Open micro-chat for a specific maintenance block
+   * @param {number|string} maintenanceId
+   */
+  async openMicroChatForMaintenance(maintenanceId) {
+    let m = reservationStore.maintenanceBlocks?.find((b) => b.id == maintenanceId);
+    if (!m) {
+      await reservationEngine.loadCalendarData();
+      m = reservationStore.maintenanceBlocks?.find((b) => b.id == maintenanceId);
+    }
+    if (!m) return;
+
+    const modalContainer = document.getElementById('cal-sheet-modal');
+    if (!modalContainer) return;
+
+    openMicroChat({
+      container: modalContainer,
+      maintenance: m,
+      user: this.user,
+      onAction: () => {
+        this.render();
+      },
+      onClose: () => {
+        modalContainer.style.display = 'none';
+        modalContainer.innerHTML = '';
+      }
+    });
+  }
+
+  /**
+   * Open handover notes modal for a reservation
+   * @param {number|string} reservationId
+   */
+  async openHandoverForReservation(reservationId) {
+    let res = reservationStore.reservations.find((r) => r.id == reservationId);
+    if (!res) {
+      await reservationEngine.loadCalendarData();
+      res = reservationStore.reservations.find((r) => r.id == reservationId);
+    }
+    if (!res) return;
+
+    const modalContainer = document.getElementById('cal-sheet-modal');
+    if (!modalContainer) return;
+
+    openHandoverModal({
+      container: modalContainer,
+      reservation: res,
+      user: this.user,
+      onSubmitted: () => {
+        this.render();
+      },
+      onClose: () => {
+        modalContainer.style.display = 'none';
+        modalContainer.innerHTML = '';
+      }
+    });
   }
 }

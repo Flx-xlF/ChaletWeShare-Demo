@@ -288,6 +288,44 @@ class ReservationEngine {
   }
 
   /**
+   * Update an existing maintenance block
+   * @param {Object} params
+   * @param {string|number} params.maintenanceId
+   * @param {string} params.halfDay - 'full' | 'morning' | 'afternoon'
+   * @param {string} params.reason
+   */
+  async updateMaintenance({ maintenanceId, halfDay = 'full', reason = 'Unterhalt' }) {
+    const profile = profileManager.getActiveProfile();
+    if (!profile) return { success: false, error: 'Nicht autorisiert.' };
+
+    try {
+      const res = await fetch('/api/reservations.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update_maintenance',
+          profile_id: profile.profile_id,
+          sync_token: profile.sync_token,
+          maintenance_id: maintenanceId,
+          half_day: halfDay,
+          reason
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        reservationStore.updateMaintenanceLocally(maintenanceId, { halfDay, reason });
+        await this.loadCalendarData();
+        this._notify('maintenance_updated', data.maintenance);
+        return { success: true, maintenance: data.maintenance };
+      } else {
+        return { success: false, error: data?.error || 'Fehler beim Aktualisieren des Unterhalts.', isTechnical: !data?.error };
+      }
+    } catch (e) {
+      return { success: false, error: 'Netzwerkfehler oder Server nicht erreichbar.', isTechnical: true };
+    }
+  }
+
+  /**
    * Delete a maintenance block
    * @param {string|number} maintenanceId
    */
@@ -738,10 +776,10 @@ class ReservationEngine {
     let profiles = profileManager.getProfiles();
     if (!profiles || profiles.length === 0) {
       profiles = [
-        { id: 1, name: 'Elena', avatar: 'swan' },
-        { id: 2, name: 'Lucas', avatar: 'fox' },
-        { id: 3, name: 'Sophie', avatar: 'bear' },
-        { id: 4, name: 'Nico', avatar: 'ibex' }
+        { id: 1, name: 'Anna', avatar: 'swan' },
+        { id: 2, name: 'Beat', avatar: 'fox' },
+        { id: 3, name: 'Clara', avatar: 'bear' },
+        { id: 4, name: 'David', avatar: 'owl' }
       ];
     }
 

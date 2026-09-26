@@ -241,20 +241,22 @@ export class DateRangeSelector {
 
     const isWorkingDay = status === 'working_day';
     const isShared = status === 'shared';
-    const isMaintenance = status === 'maintenance';
-    const isReservation = status === 'booked' || status === 'pending' || status === 'conflict';
+    const isMaintenance = status === 'maintenance' || !!maintSlot;
+    const isCollision = status === 'collision';
+    const isDoppelnutzung = status === 'doppelnutzung';
+    const isReservation = status === 'booked' || status === 'pending' || status === 'conflict' || isCollision || isDoppelnutzung;
 
     // Morning block: no checkout / departure possible
     // (morning occupied by: reservation checkout, morning maintenance, or full block)
-    const isMorningBlocked = isWorkingDay || isShared ||
-      (isReservation && (bookingSlot === 'full' || bookingSlot === 'checkout')) ||
+    const isMorningBlocked = isWorkingDay || isShared || isCollision || isDoppelnutzung ||
+      (isReservation && (bookingSlot === 'full' || bookingSlot === 'checkout' || bookingSlot === 'collision' || bookingSlot === 'doppelnutzung')) ||
       (isMaintenance && (!maintSlot || maintSlot === 'full' || maintSlot === 'morning')) ||
       (bookingSlot === 'checkin' && maintSlot === 'morning');
 
     // Afternoon block: no checkin / arrival possible
     // (afternoon occupied by: reservation checkin, afternoon maintenance, or full block)
-    const isAfternoonBlocked = isWorkingDay || isShared ||
-      (isReservation && (bookingSlot === 'full' || bookingSlot === 'checkin')) ||
+    const isAfternoonBlocked = isWorkingDay || isShared || isCollision || isDoppelnutzung ||
+      (isReservation && (bookingSlot === 'full' || bookingSlot === 'checkin' || bookingSlot === 'collision' || bookingSlot === 'doppelnutzung')) ||
       (isMaintenance && (!maintSlot || maintSlot === 'full' || maintSlot === 'afternoon')) ||
       (bookingSlot === 'checkout' && maintSlot === 'afternoon');
 
@@ -270,8 +272,9 @@ export class DateRangeSelector {
 
     // 2. Setting or restarting arrival date (startDate)
     if (!this.startDate || (this.startDate && this.endDate)) {
-      if (isAfternoonBlocked) {
-        // Afternoon is not available for check-in; inspect day
+      // Any existing maintenance block (full, morning, or afternoon) or collision/shared/blocked day
+      // must trigger inspection so the user can view, edit, or manage the entry!
+      if (isMaintenance || isCollision || isDoppelnutzung || isWorkingDay || isShared || isAfternoonBlocked) {
         if (this.onDayClick) {
           this.onDayClick(dateISO, status);
         }

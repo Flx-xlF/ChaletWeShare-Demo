@@ -3,7 +3,7 @@
  * Strict Bauhaus/Neo-Brutalist Bottom Sheet explaining all calendar visual codes.
  */
 
-import { PixelInfo, PixelCancel, PixelWrench, PixelBroom, PixelHandshake, PixelCheck, PixelVote } from '../data/pixelIcons.js';
+import { PixelInfo, PixelCancel, PixelWrench, PixelBroom, PixelHandshake, PixelCheck, PixelVote, PixelClipboard } from '../data/pixelIcons.js';
 import { openQuickTour } from './quickTourPrompt.js';
 
 export function openLegendSheet({ user, onClose } = {}) {
@@ -128,6 +128,33 @@ export function openLegendSheet({ user, onClose } = {}) {
               <div class="legend-sheet__swatch legend-sheet__swatch--split"></div>
               <div class="legend-sheet__info">
                 <strong>Wechseltag (Diagonalschnitt 45°):</strong> Vormittag Abreise (oben links), Nachmittag neue Anreise (unten rechts).
+              </div>
+            </div>
+
+            <div class="legend-sheet__row">
+              <div class="legend-sheet__swatch legend-swatch--collision">
+                <span style="font-size: 0.65rem; font-weight: 900; color: #fff; background: #DC2626; padding: 1px 2px;">2x</span>
+              </div>
+              <div class="legend-sheet__info">
+                <strong>Doppelbuchung / Kollision (⚠️ 2x):</strong> Ungewollte Überschneidung mehrerer Buchungen. Klicke darauf, um den Konflikt zu lösen oder die Buchung abzusprechen.
+              </div>
+            </div>
+
+            <div class="legend-sheet__row">
+              <div class="legend-sheet__swatch legend-swatch--doppelnutzung">
+                <span style="color: #065F46; display: flex; align-items: center; justify-content: center;">${PixelHandshake}</span>
+              </div>
+              <div class="legend-sheet__info">
+                <strong>Vereinbarte Doppelnutzung (🤝):</strong> Einvernehmliche gemeinsame Nutzung des Chalets durch mehrere Parteien.
+              </div>
+            </div>
+
+            <div class="legend-sheet__row">
+              <div class="legend-sheet__swatch legend-swatch--handover">
+                <span style="color: var(--color-accent); display: flex; align-items: center; justify-content: center;">${PixelClipboard}</span>
+              </div>
+              <div class="legend-sheet__info">
+                <strong>Übergabe-Notizen (📋):</strong> Aktuelle Hinweise zu Kehricht, Defekten oder Übergabe an den nächsten Gast vorhanden.
               </div>
             </div>
 

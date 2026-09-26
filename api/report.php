@@ -126,7 +126,7 @@ $discordPayload = [
                 ],
             ],
             'footer'      => [
-                'text' => "Chalet Alpenrose • Hilterfingen–Oberhofen • {$timestamp}",
+                'text' => "Chalet Alpenrose • Berner Oberland • {$timestamp}",
             ],
         ],
     ],

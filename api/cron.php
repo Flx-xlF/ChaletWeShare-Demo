@@ -74,15 +74,24 @@ foreach ($expired as $res) {
         $upd->execute([$nowStr, $res['id']]);
 
         // Insert notification ONLY for the reservation owner
+        $autoPayload = json_encode([
+            'reservation_id' => (int) $res['id'],
+            'date' => $res['date_start'],
+            'type' => 'auto_approved'
+        ]);
         $notifIns = $pdo->prepare("
-            INSERT INTO notifications (user_id, type, message, related_reservation_id, created_at)
-            VALUES (?, 'auto_approved', ?, ?, ?)
+            INSERT INTO notifications (user_id, type, message, related_reservation_id, action_payload, created_at)
+            VALUES (?, 'auto_approved', ?, ?, ?, ?)
         ");
         $msg = "🎉 Reservation bestätigt: Deine Reservation ({$res['date_start']} bis {$res['date_end']}) ist nun fest gebucht (Veto-Frist abgelaufen).";
-        $notifIns->execute([$res['user_id'], $msg, $res['id'], $nowStr]);
+        $notifIns->execute([$res['user_id'], $msg, $res['id'], $autoPayload, $nowStr]);
 
-        // Dispatch Web Push notification ONLY to reservation owner
-        sendWebPushToUser($pdo, $res['user_id'], 'ChaletWeShare: Reservation bestätigt', $msg, ['reservation_id' => $res['id']]);
+        // Dispatch Web Push notification ONLY to reservation owner with deep link date
+        sendWebPushToUser($pdo, $res['user_id'], 'ChaletWeShare: Reservation bestätigt', $msg, [
+            'reservation_id' => (int) $res['id'],
+            'date' => $res['date_start'],
+            'type' => 'auto_approved'
+        ]);
 
         // Calculate days and weekend days for summary output
         $start = new DateTime($res['date_start']);
@@ -149,18 +158,29 @@ if ($currentHour >= 8) {
                 $checkNotif->execute([$recipientId, $stay['id']]);
                 if ((int)$checkNotif->fetchColumn() === 0) {
                     $arrivalMsg = "Dein Aufenthalt im Chalet Alpenrose beginnt heute! Bitte beachte das Anreise-Briefing und eventuelle Übergabe-Notizen.";
+                    $arrPayload = json_encode([
+                        'reservation_id' => (int) $stay['id'],
+                        'date' => $stay['date_start'],
+                        'action' => 'arrival_briefing',
+                        'type' => 'arrival_reminder'
+                    ]);
                     $insRemind = $pdo->prepare("
-                        INSERT INTO notifications (user_id, type, message, related_reservation_id, created_at)
-                        VALUES (?, 'arrival_reminder', ?, ?, ?)
+                        INSERT INTO notifications (user_id, type, message, related_reservation_id, action_payload, created_at)
+                        VALUES (?, 'arrival_reminder', ?, ?, ?, ?)
                     ");
-                    $insRemind->execute([$recipientId, $arrivalMsg, $stay['id'], $nowStr]);
+                    $insRemind->execute([$recipientId, $arrivalMsg, $stay['id'], $arrPayload, $nowStr]);
 
                     sendWebPushToUser(
                         $pdo,
                         $recipientId,
                         'Chalet Alpenrose — Willkommen & Anreise',
                         $arrivalMsg,
-                        ['reservation_id' => $stay['id'], 'action' => 'arrival_briefing']
+                        [
+                            'reservation_id' => (int) $stay['id'],
+                            'date' => $stay['date_start'],
+                            'action' => 'arrival_briefing',
+                            'type' => 'arrival_reminder'
+                        ]
                     );
                     $arrivalReminders++;
                 }
@@ -225,18 +245,29 @@ if (!empty($targetEndDates)) {
                     $checkNotif->execute([$recipientId, $stay['id']]);
                     if ((int)$checkNotif->fetchColumn() === 0) {
                         $remindMsg = "Dein Aufenthalt im Chalet Alpenrose endet bald. Gibt es etwas, das der nächste Gast wissen sollte?";
+                        $handPayload = json_encode([
+                            'reservation_id' => (int) $stay['id'],
+                            'date' => $stay['date_end'],
+                            'action' => 'handover_prompt',
+                            'type' => 'handover_reminder'
+                        ]);
                         $insRemind = $pdo->prepare("
-                            INSERT INTO notifications (user_id, type, message, related_reservation_id, created_at)
-                            VALUES (?, 'handover_reminder', ?, ?, ?)
+                            INSERT INTO notifications (user_id, type, message, related_reservation_id, action_payload, created_at)
+                            VALUES (?, 'handover_reminder', ?, ?, ?, ?)
                         ");
-                        $insRemind->execute([$recipientId, $remindMsg, $stay['id'], $nowStr]);
+                        $insRemind->execute([$recipientId, $remindMsg, $stay['id'], $handPayload, $nowStr]);
 
                         sendWebPushToUser(
                             $pdo,
                             $recipientId,
                             'Chalet Alpenrose — Abreise-Erinnerung',
                             $remindMsg,
-                            ['reservation_id' => $stay['id'], 'action' => 'handover_prompt']
+                            [
+                                'reservation_id' => (int) $stay['id'],
+                                'date' => $stay['date_end'],
+                                'action' => 'handover_prompt',
+                                'type' => 'handover_reminder'
+                            ]
                         );
                         $handoverReminders++;
                     }
@@ -285,18 +316,28 @@ if ($currentHour >= 9) {
             $checkNotif->execute([$pu['id'], "%{$uwd['date']}%"]);
             if ((int)$checkNotif->fetchColumn() === 0) {
                 $remindMsg = "Erinnerung: In 7 Tagen ist Arbeitstag ({$seasonLabel} am {$friendlyDate}). Bist du dabei? Bitte gib kurz Bescheid!";
+                $rsvpPayload = json_encode([
+                    'working_day_id' => (int) $uwd['id'],
+                    'date' => $uwd['date'],
+                    'season' => $uwd['season'],
+                    'type' => 'working_day_rsvp_reminder'
+                ]);
                 $ins = $pdo->prepare("
-                    INSERT INTO notifications (user_id, type, message, related_reservation_id, created_at)
-                    VALUES (?, 'working_day_rsvp_reminder', ?, NULL, ?)
+                    INSERT INTO notifications (user_id, type, message, action_payload, created_at)
+                    VALUES (?, 'working_day_rsvp_reminder', ?, ?, ?)
                 ");
-                $ins->execute([$pu['id'], $remindMsg, $nowStr]);
+                $ins->execute([$pu['id'], $remindMsg, $rsvpPayload, $nowStr]);
 
                 sendWebPushToUser(
                     $pdo,
                     $pu['id'],
                     "ChaletWeShare: Arbeitstag Erinnerung",
                     $remindMsg,
-                    ['type' => 'working_day', 'working_day_id' => $uwd['id'], 'date' => $uwd['date']]
+                    [
+                        'type' => 'working_day_rsvp_reminder',
+                        'working_day_id' => (int) $uwd['id'],
+                        'date' => $uwd['date']
+                    ]
                 );
                 $workingDayRsvpReminders++;
             }
@@ -334,18 +375,28 @@ if ($currentHour >= 10) {
             $checkNotif->execute([$att['user_id'], "%{$uwd['date']}%"]);
             if ((int)$checkNotif->fetchColumn() === 0) {
                 $eveMsg = "Morgen ist gemeinsamer Arbeitstag ({$seasonLabel}) im Chalet Alpenrose! Wir freuen uns auf die gemeinsame Zeit.";
+                $evePayload = json_encode([
+                    'working_day_id' => (int) $uwd['id'],
+                    'date' => $uwd['date'],
+                    'season' => $uwd['season'],
+                    'type' => 'working_day_eve_reminder'
+                ]);
                 $ins = $pdo->prepare("
-                    INSERT INTO notifications (user_id, type, message, related_reservation_id, created_at)
-                    VALUES (?, 'working_day_eve_reminder', ?, NULL, ?)
+                    INSERT INTO notifications (user_id, type, message, action_payload, created_at)
+                    VALUES (?, 'working_day_eve_reminder', ?, ?, ?)
                 ");
-                $ins->execute([$att['user_id'], $eveMsg, $nowStr]);
+                $ins->execute([$att['user_id'], $eveMsg, $evePayload, $nowStr]);
 
                 sendWebPushToUser(
                     $pdo,
                     $att['user_id'],
                     "ChaletWeShare: Morgen Arbeitstag!",
                     $eveMsg,
-                    ['type' => 'working_day', 'working_day_id' => $uwd['id'], 'date' => $uwd['date']]
+                    [
+                        'type' => 'working_day_eve_reminder',
+                        'working_day_id' => (int) $uwd['id'],
+                        'date' => $uwd['date']
+                    ]
                 );
                 $workingDayEveReminders++;
             }
@@ -382,6 +433,12 @@ if ($currentHour >= 10 && $currentHour <= 18) {
 
         $seasonLabel = $prop['season'] === 'autumn' ? 'Einwintern' : 'Frühjahrsputz';
 
+        $pDates = [];
+        if (!empty($prop['proposed_dates'])) {
+            $pDates = is_string($prop['proposed_dates']) ? json_decode($prop['proposed_dates'], true) : $prop['proposed_dates'];
+        }
+        $firstPropDate = (is_array($pDates) && !empty($pDates[0])) ? $pDates[0] : null;
+
         foreach ($pendingVoters as $pv) {
             $checkNotif = $pdo->prepare("
                 SELECT COUNT(*) FROM notifications 
@@ -395,7 +452,13 @@ if ($currentHour >= 10 && $currentHour <= 18) {
                     INSERT INTO notifications (user_id, type, message, action_payload, created_at)
                     VALUES (?, 'working_day_vote_reminder', ?, ?, ?)
                 ");
-                $actionPayload = json_encode(['working_day_id' => $prop['id'], 'season' => $prop['season']]);
+                $actionPayload = json_encode([
+                    'working_day_id' => (int) $prop['id'],
+                    'season' => $prop['season'],
+                    'proposed_dates' => $pDates,
+                    'date' => $firstPropDate,
+                    'type' => 'working_day_vote_reminder'
+                ]);
                 $ins->execute([$pv['id'], $remindMsg, $actionPayload, $nowStr]);
 
                 sendWebPushToUser(
@@ -403,7 +466,11 @@ if ($currentHour >= 10 && $currentHour <= 18) {
                     $pv['id'],
                     "ChaletWeShare: Terminfindung {$seasonLabel}",
                     $remindMsg,
-                    ['type' => 'working_day_proposal', 'working_day_id' => $prop['id']]
+                    [
+                        'type' => 'working_day_proposal',
+                        'working_day_id' => (int) $prop['id'],
+                        'date' => $firstPropDate
+                    ]
                 );
                 $workingDayVoteReminders++;
             }

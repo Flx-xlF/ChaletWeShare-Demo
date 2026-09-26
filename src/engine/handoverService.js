@@ -17,12 +17,17 @@ class HandoverService {
   async createNote({ reservationId, category = 'custom', message }) {
     const profile = profileManager.getActiveProfile();
     if (!profile) return { success: false, error: 'Nicht autorisiert.' };
+    const gateToken = profileManager.getGateToken();
 
     try {
       const res = await fetch('./api/handover.php?action=create', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(gateToken ? { 'X-Gate-Token': gateToken } : {})
+        },
         body: JSON.stringify({
+          gate_token: gateToken,
           profile_id: profile.profile_id,
           sync_token: profile.sync_token,
           reservation_id: reservationId,
@@ -32,8 +37,8 @@ class HandoverService {
       });
       if (res.ok) {
         const data = await res.json();
-        if (data.success) {
-          this._saveLocalNote(data.note);
+        if (data.success && data.note) {
+          this._updateOrInsertLocalNote(data.note);
           return { success: true, note: data.note };
         }
       }
@@ -50,6 +55,7 @@ class HandoverService {
       author_avatar: profile.avatar,
       category,
       message,
+      is_acknowledged: 0,
       created_at: new Date().toISOString()
     };
 
@@ -71,15 +77,23 @@ class HandoverService {
   }
 
   /**
-   * Fetch notes for a given reservation (both notes left for it and notes left by it)
+   * Fetch notes for a given reservation (both notes left for it and notes left by it / prior stay)
    * @param {number|string} reservationId
    */
   async getNotesForReservation(reservationId) {
+    const gateToken = profileManager.getGateToken();
+    const gateParam = gateToken ? `&gate_token=${encodeURIComponent(gateToken)}` : '';
+
     try {
-      const res = await fetch(`./api/handover.php?action=list_for_reservation&reservation_id=${reservationId}`);
+      const res = await fetch(`./api/handover.php?action=list_for_reservation&reservation_id=${reservationId}${gateParam}`, {
+        headers: {
+          ...(gateToken ? { 'X-Gate-Token': gateToken } : {})
+        }
+      });
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.notes) {
+          data.notes.forEach(n => this._updateOrInsertLocalNote(n));
           return data.notes;
         }
       }
@@ -89,7 +103,100 @@ class HandoverService {
 
     // Return local stored notes matching
     const all = this._getAllLocalNotes();
-    return all.filter(n => n.reservation_id == reservationId || n.target_reservation_id == reservationId);
+    const currentRes = reservationStore.reservations.find(r => r.id == reservationId);
+    const priorRes = currentRes
+      ? reservationStore.reservations
+          .filter(r => r.id != reservationId && r.dateEnd <= currentRes.dateStart && r.status !== 'cancelled')
+          .sort((a, b) => b.dateEnd.localeCompare(a.dateEnd))[0]
+      : null;
+
+    return all.filter(n => 
+      n.reservation_id == reservationId || 
+      n.target_reservation_id == reservationId ||
+      (priorRes && n.reservation_id == priorRes.id)
+    );
+  }
+
+  /**
+   * Fetch the most recent handover notes across the chalet
+   */
+  async getRecentNotes() {
+    const gateToken = profileManager.getGateToken();
+    const gateParam = gateToken ? `&gate_token=${encodeURIComponent(gateToken)}` : '';
+
+    try {
+      const res = await fetch(`./api/handover.php?action=list_recent${gateParam}`, {
+        headers: {
+          ...(gateToken ? { 'X-Gate-Token': gateToken } : {})
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.notes) {
+          data.notes.forEach(n => this._updateOrInsertLocalNote(n));
+          return data.notes;
+        }
+      }
+    } catch (e) {
+      // Local fallback
+    }
+
+    const all = this._getAllLocalNotes();
+    return all.slice(0, 10);
+  }
+
+  /**
+   * Mark a handover note as acknowledged ("Gelesen")
+   * @param {number|string} noteId
+   */
+  async acknowledgeNote(noteId) {
+    const profile = profileManager.getActiveProfile();
+    if (!profile) return { success: false, error: 'Nicht autorisiert.' };
+    const gateToken = profileManager.getGateToken();
+
+    try {
+      const res = await fetch('./api/handover.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(gateToken ? { 'X-Gate-Token': gateToken } : {})
+        },
+        body: JSON.stringify({
+          action: 'acknowledge',
+          gate_token: gateToken,
+          profile_id: profile.profile_id,
+          sync_token: profile.sync_token,
+          note_id: noteId
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          const all = this._getAllLocalNotes();
+          const target = all.find(n => n.id == noteId);
+          if (target) {
+            target.is_acknowledged = 1;
+            target.acknowledged_by_name = data.acknowledged_by_name;
+            target.acknowledged_at = data.acknowledged_at;
+            localStorage.setItem('chalet_handover_notes', JSON.stringify(all));
+          }
+          return { success: true };
+        }
+      }
+    } catch (e) {
+      // Local fallback
+    }
+
+    const all = this._getAllLocalNotes();
+    const target = all.find(n => n.id == noteId);
+    if (target) {
+      target.is_acknowledged = 1;
+      target.acknowledged_by_name = profile.name;
+      target.acknowledged_at = new Date().toISOString();
+      localStorage.setItem('chalet_handover_notes', JSON.stringify(all));
+      return { success: true };
+    }
+    return { success: false, error: 'Notiz nicht gefunden.' };
   }
 
   /**
@@ -102,13 +209,18 @@ class HandoverService {
   async updateNote({ noteId, category, message }) {
     const profile = profileManager.getActiveProfile();
     if (!profile) return { success: false, error: 'Nicht autorisiert.' };
+    const gateToken = profileManager.getGateToken();
 
     try {
       const res = await fetch('./api/handover.php', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(gateToken ? { 'X-Gate-Token': gateToken } : {})
+        },
         body: JSON.stringify({
           action: 'update',
+          gate_token: gateToken,
           profile_id: profile.profile_id,
           sync_token: profile.sync_token,
           note_id: noteId,
@@ -119,7 +231,7 @@ class HandoverService {
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.note) {
-          this._updateLocalNote(data.note);
+          this._updateOrInsertLocalNote(data.note);
           return { success: true, note: data.note };
         } else if (data.error) {
           return { success: false, error: data.error };
@@ -151,13 +263,18 @@ class HandoverService {
   async deleteNote(noteId) {
     const profile = profileManager.getActiveProfile();
     if (!profile) return { success: false, error: 'Nicht autorisiert.' };
+    const gateToken = profileManager.getGateToken();
 
     try {
       const res = await fetch('./api/handover.php', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(gateToken ? { 'X-Gate-Token': gateToken } : {})
+        },
         body: JSON.stringify({
           action: 'delete',
+          gate_token: gateToken,
           profile_id: profile.profile_id,
           sync_token: profile.sync_token,
           note_id: noteId
@@ -184,13 +301,18 @@ class HandoverService {
   async checkPrompt() {
     const profile = profileManager.getActiveProfile();
     if (!profile) return { should_prompt: false };
+    const gateToken = profileManager.getGateToken();
 
     try {
       const res = await fetch('./api/handover.php', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(gateToken ? { 'X-Gate-Token': gateToken } : {})
+        },
         body: JSON.stringify({
           action: 'check_prompt',
+          gate_token: gateToken,
           profile_id: profile.profile_id,
           sync_token: profile.sync_token,
         }),
@@ -232,13 +354,18 @@ class HandoverService {
   async getArrivalBriefing() {
     const profile = profileManager.getActiveProfile();
     if (!profile) return { has_arrival: false };
+    const gateToken = profileManager.getGateToken();
 
     try {
       const res = await fetch('./api/handover.php', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(gateToken ? { 'X-Gate-Token': gateToken } : {})
+        },
         body: JSON.stringify({
           action: 'get_arrival_briefing',
+          gate_token: gateToken,
           profile_id: profile.profile_id,
           sync_token: profile.sync_token,
         }),
@@ -323,6 +450,20 @@ class HandoverService {
         list[idx] = { ...list[idx], ...updatedNote };
         localStorage.setItem('chalet_handover_notes', JSON.stringify(list));
       }
+    } catch (e) {}
+  }
+
+  _updateOrInsertLocalNote(note) {
+    if (!note || !note.id) return;
+    try {
+      let list = this._getAllLocalNotes();
+      const idx = list.findIndex(n => n.id == note.id);
+      if (idx !== -1) {
+        list[idx] = { ...list[idx], ...note };
+      } else {
+        list.unshift(note);
+      }
+      localStorage.setItem('chalet_handover_notes', JSON.stringify(list.slice(0, 50)));
     } catch (e) {}
   }
 }

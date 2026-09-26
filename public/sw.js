@@ -3,7 +3,7 @@
  * Handles Web Push notifications and basic offline asset caching.
  */
 
-const CACHE_NAME = 'chalet-cache-v10';
+const CACHE_NAME = 'chalet-cache-v11';
 const PRECACHE_ASSETS = [
   './',
   './index.html',
@@ -168,7 +168,7 @@ self.addEventListener('push', (event) => {
   );
 });
 
-// Notification click — deep-link to relevant reservation/date
+// Notification click — deep-link to relevant reservation/date/working-day/chat/profile
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const notifData = event.notification.data || {};
@@ -187,8 +187,23 @@ self.addEventListener('notificationclick', (event) => {
       }
       // No existing window — open new one with deep-link hash
       let url = './';
-      if (notifData.reservation_id) {
+      if (notifData.route) {
+        const cleanRoute = notifData.route.replace(/^\/?#?\/?/, '');
+        url = `./#/${cleanRoute}`;
+      } else if (notifData.type === 'test') {
+        url = './#/profile';
+      } else if (notifData.type === 'chat_message' && notifData.reservation_id) {
+        url = `./#/chat/res/${notifData.reservation_id}`;
+      } else if (notifData.type === 'chat_message' && notifData.maintenance_id) {
+        url = `./#/chat/maint/${notifData.maintenance_id}`;
+      } else if (notifData.type === 'cancellation' && notifData.date) {
+        url = `./#/date/${notifData.date}`;
+      } else if (notifData.reservation_id) {
         url = `./#/reservation/${notifData.reservation_id}`;
+      } else if (notifData.working_day_id) {
+        url = `./#/working-day/${notifData.working_day_id}`;
+      } else if (notifData.maintenance_id) {
+        url = `./#/maintenance/${notifData.maintenance_id}`;
       } else if (notifData.date) {
         url = `./#/date/${notifData.date}`;
       }

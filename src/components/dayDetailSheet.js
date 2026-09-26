@@ -11,13 +11,14 @@ import { openConflictModal } from './conflictModal.js';
 import { handoverService } from '../engine/handoverService.js';
 import { openHandoverModal } from './handoverModal.js';
 import { playConfettiCelebration } from './confettiAnimation.js';
-import { playThunderstormAnimation } from './sillyAnimations.js';
-import { PixelClipboard, PixelClock, PixelWrench, PixelWarning, PixelCheck, PixelBroom, PixelLeaf, PixelCalendar, PixelHourglass, PixelCancel, PixelChat, PixelEdit, PixelVote } from '../data/pixelIcons.js';
+import { PixelClipboard, PixelClock, PixelWrench, PixelWarning, PixelCheck, PixelBroom, PixelLeaf, PixelCalendar, PixelHourglass, PixelCancel, PixelChat, PixelEdit, PixelVote, PixelHandshake, PixelDice, PixelLightning } from '../data/pixelIcons.js';
 import { escapeHtml } from '../utils/htmlUtils.js';
 import { exportWorkingDayToCalendar, exportReservationToCalendar } from '../utils/icsUtils.js';
 import { showInlineError } from '../utils/errorUtils.js';
 import { confirmDialog } from './confirmDialog.js';
 import { openMicroChat } from './microChat.js';
+import { notificationToast } from './notificationToast.js';
+import { openMaintenanceSheet } from './maintenanceSheet.js';
 
 export async function openDayDetailSheet({ container, dateISO, user, onSelectAsStart, onUpdated, onClose }) {
   const dayData = reservationStore.getDayStatus(dateISO);
@@ -26,10 +27,29 @@ export async function openDayDetailSheet({ container, dateISO, user, onSelectAsS
 
   const isOwnReservation = info.userId == user.id || info.userName === user.name;
 
-  // Fetch handover notes if reservation exists
+  // Fetch handover notes across any related reservations for this day
+  const candidateResIds = new Set();
+  if (info.id) candidateResIds.add(info.id);
+  if (dayData.checkoutInfo?.id) candidateResIds.add(dayData.checkoutInfo.id);
+  if (dayData.checkinInfo?.id) candidateResIds.add(dayData.checkinInfo.id);
+  if (Array.isArray(dayData.collidingReservations)) {
+    dayData.collidingReservations.forEach(r => { if (r?.id) candidateResIds.add(r.id); });
+  }
+
   let handoverNotes = [];
-  if (info.id) {
-    handoverNotes = await handoverService.getNotesForReservation(info.id);
+  if (candidateResIds.size > 0) {
+    const noteMap = new Map();
+    for (const resId of candidateResIds) {
+      try {
+        const notes = await handoverService.getNotesForReservation(resId);
+        if (Array.isArray(notes)) {
+          notes.forEach(n => noteMap.set(n.id, n));
+        }
+      } catch (err) {
+        console.warn('Failed fetching notes for res', resId, err);
+      }
+    }
+    handoverNotes = Array.from(noteMap.values()).sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
   }
 
   container.style.display = 'flex';
@@ -43,36 +63,70 @@ export async function openDayDetailSheet({ container, dateISO, user, onSelectAsS
   const renderHandoverSection = () => {
     if (!handoverNotes || handoverNotes.length === 0) return '';
     return `
-      <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 8px;">
-        <div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-accent); display: flex; align-items: center; gap: 6px;">
-          <span>${PixelClipboard}</span>
-          <span>Übergabe-Notizen (${handoverNotes.length})</span>
+      <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 8px;">
+        <div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-accent); display: flex; align-items: center; justify-content: space-between;">
+          <span style="display: inline-flex; align-items: center; gap: 6px;">
+            ${PixelClipboard}
+            <span>Übergabe-Notizen (${handoverNotes.length})</span>
+          </span>
+          <span style="font-size: 0.68rem; font-weight: 700; color: var(--color-text-muted); text-transform: none;">
+            Für alle Gäste sichtbar
+          </span>
         </div>
         ${handoverNotes.map(n => {
           const catLabels = { garbage: 'Kehricht', missing: 'Fehlendes', broken: 'Defekt', custom: 'Notiz' };
+          const catColors = {
+            garbage: '#059669',
+            missing: '#D97706',
+            broken: '#DC2626',
+            custom: 'var(--color-accent)'
+          };
           const badge = catLabels[n.category] || 'Notiz';
+          const badgeColor = catColors[n.category] || 'var(--color-accent)';
           const isAuthor = user && (n.author_user_id == user.id || n.author_name === user.name);
+          const isAck = !!(n.is_acknowledged && Number(n.is_acknowledged) !== 0);
+
           return `
             <div class="card" style="padding: 10px 12px; border: var(--border); background: var(--color-surface); box-shadow: var(--shadow-brutal-sm); position: relative;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                 <div style="display: flex; align-items: center; gap: 6px;">
                   ${renderAvatarMarkup(n.author_avatar || 'swan', 24)}
                   <span style="font-weight: 800; font-size: 0.85rem;">${escapeHtml(n.author_name || 'Gast')}</span>
+                  ${isAuthor ? '<span style="font-size: 0.65rem; background: var(--color-bg); border: 1px solid var(--color-border); padding: 0 4px; font-weight: 700;">Du</span>' : ''}
                 </div>
                 <div style="display: flex; align-items: center; gap: 6px;">
-                  <span style="font-size: 0.68rem; font-weight: 800; background: var(--color-accent); color: #fff; padding: 2px 6px; text-transform: uppercase;">
+                  <span style="font-size: 0.68rem; font-weight: 800; background: ${badgeColor}; color: #fff; padding: 2px 6px; text-transform: uppercase;">
                     ${badge}
                   </span>
                   ${isAuthor ? `
-                    <button type="button" class="btn btn--icon btn--sm btn-edit-handover" data-note-id="${n.id}" title="Notiz bearbeiten" aria-label="Notiz bearbeiten" style="padding: 2px 6px; height: 24px; min-height: 24px; width: 24px; border: var(--border); background: var(--color-surface); box-shadow: none; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                    <button type="button" class="btn btn--icon btn--sm btn-edit-handover" data-note-id="${n.id}" title="Notiz bearbeiten" aria-label="Notiz bearbeiten" style="padding: 2px; height: 24px; min-height: 24px; width: 24px; border: var(--border); background: var(--color-surface); box-shadow: none; display: flex; align-items: center; justify-content: center; cursor: pointer;">
                       ${PixelEdit}
+                    </button>
+                    <button type="button" class="btn btn--icon btn--sm btn-del-handover" data-note-id="${n.id}" title="Notiz löschen" aria-label="Notiz löschen" style="padding: 2px; height: 24px; min-height: 24px; width: 24px; border: var(--border); background: #FFF0F0; color: var(--color-danger); box-shadow: none; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                      ${PixelCancel}
                     </button>
                   ` : ''}
                 </div>
               </div>
-              <p style="font-size: 0.85rem; font-weight: 600; line-height: 1.35; color: var(--color-text); margin: 0;">
+              <p style="font-size: 0.85rem; font-weight: 600; line-height: 1.35; color: var(--color-text); margin: 0 0 6px 0;">
                 ${escapeHtml(n.message)}
               </p>
+              <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px dashed var(--color-border); padding-top: 6px; margin-top: 6px;">
+                <div style="font-size: 0.72rem; color: var(--color-text-muted);">
+                  ${isAck ? `
+                    <span style="color: #059669; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
+                      ${PixelCheck} Gelesen von ${escapeHtml(n.acknowledged_by_name || 'Gast')}
+                    </span>
+                  ` : `
+                    <span style="font-style: italic;">Noch nicht bestätigt</span>
+                  `}
+                </div>
+                ${(!isAck && !isAuthor) ? `
+                  <button type="button" class="btn btn--sm btn-ack-handover" data-note-id="${n.id}" style="font-size: 0.7rem; padding: 2px 8px; border: var(--border); background: #ECFDF5; color: #065F46; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                    ${PixelCheck} Gelesen bestätigen
+                  </button>
+                ` : ''}
+              </div>
             </div>
           `;
         }).join('')}
@@ -142,6 +196,141 @@ export async function openDayDetailSheet({ container, dateISO, user, onSelectAsS
         ${PixelClipboard} Notiz an nächsten Gast hinterlassen
       </button>
     `;
+  } else if (dayData.status === 'collision') {
+    const colls = Array.isArray(dayData.collidingReservations) && dayData.collidingReservations.length > 0
+      ? dayData.collidingReservations
+      : [info];
+    headerTag = '<span style="display: inline-flex; align-items: center; gap: 5px;">⚡ DOPPELBUCHUNG / KOLLISION</span>';
+    tagColor = '#F20587';
+    title = 'Doppelbuchung festgestellt!';
+
+    bodyHtml = `
+      <div style="margin: 12px 0;">
+        <div class="card" style="background: #FFF3CD; border: 2px solid #1C1C1E; box-shadow: var(--shadow-brutal-sm); padding: 12px; margin-bottom: 12px;">
+          <div style="display: flex; align-items: center; gap: 8px; font-weight: 900; color: #1C1C1E; font-size: 0.9rem; margin-bottom: 4px;">
+            <span>${PixelWarning}</span>
+            <span>Doppelbuchung festgestellt:</span>
+          </div>
+          <p style="font-size: 0.82rem; color: #1C1C1E; line-height: 1.4; margin: 0; font-weight: 600;">
+            Für diesen Zeitraum liegen mehrere Buchungen vor. Der Aufenthalt kann erst stattfinden, wenn geklärt ist, ob ihr das Chalet gemeinsam nutzt oder eine Buchung verschoben/storniert wird.
+          </p>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          ${colls.map(r => {
+            const isMine = r.userId == user.id || r.userName === user.name;
+            const partyCount = r.adultsCount || r.guests || r.party_size || null;
+            return `
+              <div class="card" style="padding: 10px; border: var(--border); background: var(--color-surface); box-shadow: var(--shadow-brutal-sm);">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    ${renderAvatarMarkup(r.userAvatar || 'swan', 36)}
+                    <div>
+                      <div style="font-weight: 800; font-size: 0.95rem;">
+                        ${escapeHtml(r.userName || 'Familie')}
+                        ${isMine ? ' <span style="font-size: 0.7rem; background: var(--color-accent); color: #fff; padding: 1px 5px; text-transform: uppercase;">Du</span>' : ''}
+                      </div>
+                      <div style="font-size: 0.8rem; color: var(--color-text-muted);">
+                        ${formatDateFriendly(r.dateStart)} – ${formatDateFriendly(r.dateEnd)}
+                        ${partyCount ? ` · ${partyCount} Pers.` : ''}
+                      </div>
+                    </div>
+                  </div>
+                  <span style="font-size: 0.72rem; font-weight: 800; background: #FEE2E2; color: #DC2626; border: 1.5px solid #1C1C1E; padding: 2px 6px;">
+                    ${r.status === 'booked' ? 'Gebucht' : (r.status === 'pending' ? 'Ausstehend' : 'Kollision')}
+                  </span>
+                </div>
+                ${isMine ? `
+                  <button class="btn btn--sm btn--danger btn-cancel-res" data-id="${r.id}" style="margin-top: 8px; width: 100%;">
+                    Meine Buchung stornieren
+                  </button>
+                ` : ''}
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+      ${renderHandoverSection()}
+    `;
+
+    actionsHtml = `
+      <button id="day-sheet-btn-doppel-agree" class="btn btn--block btn--primary" style="margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 8px; background: #059669; border-color: #047857;">
+        ${PixelHandshake} Doppelnutzung vereinbaren
+      </button>
+      <button id="day-sheet-btn-chat-collision" class="btn btn--block btn--outline" style="margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+        ${PixelChat} Im Chat klären
+      </button>
+      <button id="day-sheet-btn-rng-collision" class="btn btn--block btn--danger" style="margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+        ${PixelDice} Losentscheid (RNG)
+      </button>
+      <button id="day-sheet-btn-handover" class="btn btn--block btn--black" style="margin-top: 8px;">
+        ${PixelClipboard} Notiz hinterlassen
+      </button>
+    `;
+  } else if (dayData.status === 'doppelnutzung') {
+    const list = Array.isArray(dayData.collidingReservations) && dayData.collidingReservations.length > 0
+      ? dayData.collidingReservations
+      : (dayData.maintenanceDay ? [dayData.maintenanceDay, info] : [info]);
+    headerTag = '🤝 Vereinbarte Doppelnutzung';
+    tagColor = '#059669';
+    title = 'Gemeinsamer Chalet-Aufenthalt';
+
+    bodyHtml = `
+      <div style="margin: 12px 0;">
+        <div class="card" style="background: #ECFDF5; border: 2px solid #059669; padding: 10px 12px; margin-bottom: 12px;">
+          <div style="display: flex; align-items: center; gap: 8px; font-weight: 800; color: #065F46; font-size: 0.9rem; margin-bottom: 4px;">
+            <span>${PixelHandshake}</span>
+            <span>Vereinbarte Doppelnutzung</span>
+          </div>
+          <p style="font-size: 0.82rem; color: #047857; line-height: 1.35; margin: 0;">
+            Hier teilen sich mehrere Parteien einvernehmlich das Chalet (z.B. Familie & Helfer oder beidseitige Zusage).
+          </p>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          ${list.map(r => {
+            const isMine = r.userId == user.id || r.userName === user.name;
+            const isMaint = r.type === 'maintenance' || r.isMaintenance;
+            return `
+              <div class="card" style="padding: 10px; border: var(--border); background: var(--color-surface); box-shadow: var(--shadow-brutal-sm);">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    ${renderAvatarMarkup(r.userAvatar || (isMaint ? 'wrench' : 'swan'), 36)}
+                    <div>
+                      <div style="font-weight: 800; font-size: 0.95rem;">
+                        ${escapeHtml(r.userName || (isMaint ? 'Unterhalt' : 'Familie'))}
+                        ${isMine ? ' <span style="font-size: 0.7rem; background: var(--color-accent); color: #fff; padding: 1px 5px; text-transform: uppercase;">Du</span>' : ''}
+                      </div>
+                      <div style="font-size: 0.8rem; color: var(--color-text-muted);">
+                        ${isMaint ? (escapeHtml(r.title || 'Unterhaltsarbeiten')) : `${formatDateFriendly(r.dateStart)} – ${formatDateFriendly(r.dateEnd)}`}
+                      </div>
+                    </div>
+                  </div>
+                  <span style="font-size: 0.72rem; font-weight: 800; background: #D1FAE5; color: #065F46; border: 1px solid #059669; padding: 2px 6px;">
+                    ${isMaint ? 'Unterhalt' : 'Geteilt'}
+                  </span>
+                </div>
+                ${isMine ? `
+                  <button class="btn btn--sm btn--danger btn-cancel-res" data-id="${r.id}" style="margin-top: 8px; width: 100%;">
+                    ${isMaint ? 'Unterhalt stornieren' : 'Meine Buchung stornieren'}
+                  </button>
+                ` : ''}
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+      ${renderHandoverSection()}
+    `;
+
+    actionsHtml = `
+      <button id="day-sheet-btn-chat-doppel" class="btn btn--block btn--primary" style="margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+        ${PixelChat} Mitbewohner kontaktieren
+      </button>
+      <button id="day-sheet-btn-handover" class="btn btn--block btn--black" style="margin-top: 8px;">
+        ${PixelClipboard} Notiz für alle hinterlassen
+      </button>
+    `;
   } else if (dayData.status === 'booked') {
     const isCheckout = dayData.bookingSlot === 'checkout';
     const isCheckin = dayData.bookingSlot === 'checkin';
@@ -174,6 +363,36 @@ export async function openDayDetailSheet({ container, dateISO, user, onSelectAsS
         </div>
       </div>
       ${slotNote}
+      ${dayData.maintInfo ? `
+        <div class="card" style="padding: 10px 12px; border: var(--border); background: #FFFDF0; border-left: 4px solid var(--color-maintenance); margin-top: 10px; box-shadow: var(--shadow-brutal-sm);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <div style="font-weight: 800; font-size: 0.85rem; display: flex; align-items: center; gap: 6px;">
+              <span>${PixelWrench}</span>
+              <span>Unterhalt (${dayData.maintInfo.halfDay === 'morning' ? 'Vormittag' : (dayData.maintInfo.halfDay === 'afternoon' ? 'Nachmittag' : 'Ganzer Tag')})</span>
+            </div>
+            <span style="font-size: 0.72rem; color: var(--color-text-muted); font-weight: 700;">
+              ${escapeHtml(dayData.maintInfo.userName || 'Familie')}
+            </span>
+          </div>
+          <div style="font-size: 0.82rem; color: var(--color-text); margin-bottom: 6px;">
+            ${escapeHtml(dayData.maintInfo.reason || 'Arbeiten / Reinigung')}
+          </div>
+          <div style="display: flex; gap: 6px;">
+            ${(Number(user.id) === Number(dayData.maintInfo.userId || dayData.maintInfo.user_id)) ? `
+              <button type="button" class="btn btn--sm btn--outline btn-edit-shared-maint" style="font-size: 0.75rem; padding: 2px 8px; display: inline-flex; align-items: center; gap: 4px;">
+                ${PixelEdit} Bearbeiten
+              </button>
+              <button type="button" class="btn btn--sm btn--danger btn-del-shared-maint" data-id="${dayData.maintInfo.id}" style="font-size: 0.75rem; padding: 2px 8px;">
+                Aufheben
+              </button>
+            ` : `
+              <button type="button" class="btn btn--sm btn--secondary btn-chat-shared-maint" style="font-size: 0.75rem; padding: 2px 8px; display: inline-flex; align-items: center; gap: 4px;">
+                ${PixelChat} Micro-Chat
+              </button>
+            `}
+          </div>
+        </div>
+      ` : ''}
       ${renderHandoverSection()}
     `;
 
@@ -217,10 +436,10 @@ export async function openDayDetailSheet({ container, dateISO, user, onSelectAsS
     // Build Sibling Approval Roster
     const familyProfiles = profileManager.getProfiles();
     const effectiveProfiles = familyProfiles.length > 0 ? familyProfiles : [
-      { id: 1, name: 'Elena', avatar: 'swan' },
-      { id: 2, name: 'Lucas', avatar: 'fox' },
-      { id: 3, name: 'Sophie', avatar: 'bear' },
-      { id: 4, name: 'Nico', avatar: 'ibex' }
+      { id: 1, name: 'Anna', avatar: 'swan' },
+      { id: 2, name: 'Beat', avatar: 'fox' },
+      { id: 3, name: 'Clara', avatar: 'bear' },
+      { id: 4, name: 'David', avatar: 'owl' }
     ];
 
     const rosterItems = effectiveProfiles.map((p) => {
@@ -657,6 +876,9 @@ export async function openDayDetailSheet({ container, dateISO, user, onSelectAsS
         </button>
 
         ${isOwner ? `
+          <button id="day-sheet-btn-edit-maint" class="btn btn--block btn--outline" style="display: flex; align-items: center; justify-content: center; gap: 6px;">
+            ${PixelEdit} Unterhalt bearbeiten
+          </button>
           <button id="day-sheet-btn-del-maint" class="btn btn--block btn--danger btn--sm">
             Unterhalt aufheben
           </button>
@@ -799,9 +1021,10 @@ export async function openDayDetailSheet({ container, dateISO, user, onSelectAsS
   const handoverBtn = container.querySelector('#day-sheet-btn-handover');
   if (handoverBtn) {
     handoverBtn.addEventListener('click', () => {
+      const targetRes = info.id ? info : (dayData.checkoutInfo?.id ? dayData.checkoutInfo : (dayData.checkinInfo?.id ? dayData.checkinInfo : (dayData.collidingReservations?.[0] || info)));
       openHandoverModal({
         container,
-        reservation: info,
+        reservation: targetRes,
         user,
         onSubmitted: () => {
           // Re-render day sheet to show the newly added note
@@ -824,7 +1047,7 @@ export async function openDayDetailSheet({ container, dateISO, user, onSelectAsS
 
       openHandoverModal({
         container,
-        reservation: info,
+        reservation: info.id ? info : { id: note.reservation_id },
         user,
         existingNote: note,
         onSubmitted: () => {
@@ -836,6 +1059,138 @@ export async function openDayDetailSheet({ container, dateISO, user, onSelectAsS
       });
     });
   });
+
+  // Delete handover note
+  container.querySelectorAll('.btn-del-handover').forEach((btn) => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const noteId = btn.dataset.noteId;
+      const confirmed = await confirmDialog({
+        title: 'Notiz löschen',
+        message: 'Möchtest du diese Übergabe-Notiz wirklich entfernen?',
+        confirmLabel: 'Löschen',
+        isDanger: true
+      });
+      if (!confirmed) return;
+      btn.disabled = true;
+      const res = await handoverService.deleteNote(noteId);
+      if (res && res.success) {
+        notificationToast.show({
+          title: 'Notiz gelöscht',
+          message: 'Die Übergabenotiz wurde entfernt.',
+          type: 'neutral'
+        });
+        openDayDetailSheet({ container, dateISO, user, onSelectAsStart, onUpdated, onClose });
+        if (onUpdated) onUpdated();
+      } else {
+        btn.disabled = false;
+        showInlineError(errorEl, res.error || 'Fehler beim Löschen.', { reportable: true, category: 'Übergabe' });
+      }
+    });
+  });
+
+  // Acknowledge handover note
+  container.querySelectorAll('.btn-ack-handover').forEach((btn) => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const noteId = btn.dataset.noteId;
+      btn.disabled = true;
+      btn.textContent = 'Wird bestätigt...';
+      const res = await handoverService.acknowledgeNote(noteId);
+      if (res && res.success) {
+        notificationToast.show({
+          title: 'Notiz bestätigt',
+          message: 'Du hast bestätigt, diese Notiz gelesen zu haben.',
+          type: 'success'
+        });
+        openDayDetailSheet({ container, dateISO, user, onSelectAsStart, onUpdated, onClose });
+      } else {
+        btn.disabled = false;
+        btn.textContent = 'Bestätigen fehlgeschlagen';
+      }
+    });
+  });
+
+  // Collision resolution & chat actions
+  const doppelAgreeBtn = container.querySelector('#day-sheet-btn-doppel-agree');
+  if (doppelAgreeBtn) {
+    doppelAgreeBtn.addEventListener('click', () => {
+      close();
+      const targetRes = (dayData.collidingReservations && dayData.collidingReservations[0]) || info;
+      openConflictModal({
+        container,
+        reservation: targetRes,
+        user,
+        onResolved: () => {
+          if (onUpdated) onUpdated();
+        }
+      });
+    });
+  }
+
+  const rngCollisionBtn = container.querySelector('#day-sheet-btn-rng-collision');
+  if (rngCollisionBtn) {
+    rngCollisionBtn.addEventListener('click', () => {
+      close();
+      const targetRes = (dayData.collidingReservations && dayData.collidingReservations[0]) || info;
+      openConflictModal({
+        container,
+        reservation: targetRes,
+        user,
+        onResolved: () => {
+          if (onUpdated) onUpdated();
+        }
+      });
+    });
+  }
+
+  const resolveCollisionBtn = container.querySelector('#day-sheet-btn-resolve-collision');
+  if (resolveCollisionBtn) {
+    resolveCollisionBtn.addEventListener('click', () => {
+      close();
+      const targetRes = (dayData.collidingReservations && dayData.collidingReservations[0]) || info;
+      openConflictModal({
+        container,
+        reservation: targetRes,
+        user,
+        onResolved: () => {
+          if (onUpdated) onUpdated();
+        }
+      });
+    });
+  }
+
+  const chatCollisionBtn = container.querySelector('#day-sheet-btn-chat-collision');
+  if (chatCollisionBtn) {
+    chatCollisionBtn.addEventListener('click', () => {
+      close();
+      const targetRes = (dayData.collidingReservations && dayData.collidingReservations.find(r => r.userId != user.id)) || (dayData.collidingReservations && dayData.collidingReservations[0]) || info;
+      openMicroChat({
+        container,
+        reservation: targetRes,
+        user,
+        onClose: () => {
+          openDayDetailSheet({ container, dateISO, user, onSelectAsStart, onUpdated, onClose });
+        }
+      });
+    });
+  }
+
+  const chatDoppelBtn = container.querySelector('#day-sheet-btn-chat-doppel');
+  if (chatDoppelBtn) {
+    chatDoppelBtn.addEventListener('click', () => {
+      close();
+      const targetRes = (dayData.collidingReservations && dayData.collidingReservations.find(r => r.userId != user.id)) || (dayData.collidingReservations && dayData.collidingReservations[0]) || info;
+      openMicroChat({
+        container,
+        reservation: targetRes,
+        user,
+        onClose: () => {
+          openDayDetailSheet({ container, dateISO, user, onSelectAsStart, onUpdated, onClose });
+        }
+      });
+    });
+  }
 
   // Maintenance chat action
   const maintChatBtn = container.querySelector('#day-sheet-btn-maint-chat');
@@ -849,6 +1204,78 @@ export async function openDayDetailSheet({ container, dateISO, user, onSelectAsS
         onOverlapAllowed: () => {
           if (onUpdated) onUpdated();
         },
+        onClose: () => {
+          openDayDetailSheet({ container, dateISO, user, onSelectAsStart, onUpdated, onClose });
+        }
+      });
+    });
+  }
+
+  // Edit maintenance action
+  const editMaintBtn = container.querySelector('#day-sheet-btn-edit-maint');
+  if (editMaintBtn) {
+    editMaintBtn.addEventListener('click', () => {
+      openMaintenanceSheet({
+        container,
+        user,
+        existingMaintenance: info,
+        onSuccess: () => {
+          openDayDetailSheet({ container, dateISO, user, onSelectAsStart, onUpdated, onClose });
+          if (onUpdated) onUpdated();
+        },
+        onClose: () => {
+          openDayDetailSheet({ container, dateISO, user, onSelectAsStart, onUpdated, onClose });
+        }
+      });
+    });
+  }
+
+  // Shared maintenance actions on booked days
+  const editSharedMaintBtn = container.querySelector('.btn-edit-shared-maint');
+  if (editSharedMaintBtn && dayData.maintInfo) {
+    editSharedMaintBtn.addEventListener('click', () => {
+      openMaintenanceSheet({
+        container,
+        user,
+        existingMaintenance: dayData.maintInfo,
+        onSuccess: () => {
+          openDayDetailSheet({ container, dateISO, user, onSelectAsStart, onUpdated, onClose });
+          if (onUpdated) onUpdated();
+        },
+        onClose: () => {
+          openDayDetailSheet({ container, dateISO, user, onSelectAsStart, onUpdated, onClose });
+        }
+      });
+    });
+  }
+
+  const delSharedMaintBtn = container.querySelector('.btn-del-shared-maint');
+  if (delSharedMaintBtn && dayData.maintInfo) {
+    delSharedMaintBtn.addEventListener('click', async () => {
+      if (!(await confirmDialog({ title: 'Unterhalt aufheben', message: 'Unterhalt für diesen Tag aufheben?', confirmLabel: 'Aufheben', isDanger: true }))) return;
+      if (navigator.vibrate) navigator.vibrate(10);
+      delSharedMaintBtn.disabled = true;
+      delSharedMaintBtn.textContent = 'Wird entfernt...';
+      const res = await reservationEngine.deleteMaintenance(dayData.maintInfo.id);
+      if (res.success) {
+        openDayDetailSheet({ container, dateISO, user, onSelectAsStart, onUpdated, onClose });
+        if (onUpdated) onUpdated();
+      } else {
+        delSharedMaintBtn.disabled = false;
+        delSharedMaintBtn.textContent = 'Aufheben';
+        showInlineError(errorEl, res.error || 'Fehler beim Aufheben.', { reportable: res.isTechnical, category: 'Buchung' });
+      }
+    });
+  }
+
+  const chatSharedMaintBtn = container.querySelector('.btn-chat-shared-maint');
+  if (chatSharedMaintBtn && dayData.maintInfo) {
+    chatSharedMaintBtn.addEventListener('click', () => {
+      close();
+      openMicroChat({
+        container,
+        maintenance: dayData.maintInfo,
+        user,
         onClose: () => {
           openDayDetailSheet({ container, dateISO, user, onSelectAsStart, onUpdated, onClose });
         }

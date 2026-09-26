@@ -29,7 +29,7 @@ function getVapidConfig()
         return null;
     }
     return [
-        'subject' => $cfg['vapid_subject'] ?? 'mailto:chalet@chaletshare.demo',
+        'subject' => $cfg['vapid_subject'] ?? 'mailto:chalet@schoolyard.ch',
         'publicKey' => $cfg['vapid_public_key'],
         'privateKey' => $cfg['vapid_private_key'],
     ];
@@ -520,7 +520,13 @@ if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === 'push.php') {
             }
 
             global $lastWebPushError;
-            $sent = sendWebPushToUser($pdo, $user['id'], 'ChaletWeShare Test', 'Test-Mitteilung erfolgreich empfangen!', ['type' => 'test']);
+            $sent = sendWebPushToUser(
+                $pdo,
+                $user['id'],
+                'ChaletWeShare Test',
+                'Test-Mitteilung erfolgreich empfangen! Tippe hier, um dein Profil zu öffnen.',
+                ['type' => 'test', 'route' => '#/profile']
+            );
             if (!$sent) {
                 jsonResponse([
                     'success' => false,

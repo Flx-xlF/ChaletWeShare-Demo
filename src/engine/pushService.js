@@ -181,14 +181,16 @@ class PushService {
       // 2. Direct browser notification fallback (only if VAPID not configured)
       if (this.registration) {
         await this.registration.showNotification('ChaletWeShare', {
-          body: 'Lokale Test-Mitteilung: Push-Backend ist nicht konfiguriert.',
+          body: 'Lokale Test-Mitteilung: Push-Mitteilungen sind aktiv! Tippe hier für Profil.',
           icon: './app-icon-192-v2.png',
           badge: './app-icon-192-v2.png',
+          data: { type: 'test', route: '#/profile' }
         });
         return { success: true, method: 'local' };
       } else {
         new Notification('ChaletWeShare', {
-          body: 'Lokale Test-Mitteilung: Push-Backend ist nicht konfiguriert.',
+          body: 'Lokale Test-Mitteilung: Push-Mitteilungen sind aktiv! Tippe hier für Profil.',
+          data: { type: 'test', route: '#/profile' }
         });
         return { success: true, method: 'local' };
       }

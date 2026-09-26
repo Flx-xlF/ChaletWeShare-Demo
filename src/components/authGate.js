@@ -17,7 +17,7 @@ export function renderAuthGate(container, onUnlocked) {
         <div>
           <h1 style="margin-bottom: 4px; letter-spacing: -0.02em;">CHALET ALPENROSE</h1>
           <p style="color: var(--color-text-muted); font-family: var(--font-mono); font-size: 0.85rem; font-weight: 600;">
-            Hilterfingen – Oberhofen
+            Berner Oberland, Schweiz
           </p>
         </div>
 

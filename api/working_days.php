@@ -242,19 +242,25 @@ switch ($action) {
             $actionPayload = json_encode([
                 'working_day_id' => $workingDayId,
                 'proposed_dates' => $cleanDates,
-                'season' => $season
+                'date' => $cleanDates[0] ?? null,
+                'season' => $season,
+                'type' => 'working_day_proposal'
             ]);
             foreach ($otherUsers as $ou) {
                 $notifIns->execute([$ou['id'], $notifMsg, $actionPayload, $nowStr]);
             }
 
-            // Web Push to all other siblings
+            // Web Push to all other siblings with deep link date
             sendWebPushToAll(
                 $pdo,
                 $user['id'],
                 "ChaletWeShare: {$seasonLabel} Terminvorschlag",
                 "{$user['name']} schlägt {$dateCount} Daten für den {$seasonLabel} vor. Stimme jetzt in der App ab!",
-                ['type' => 'working_day_proposal', 'working_day_id' => $workingDayId]
+                [
+                    'type' => 'working_day_proposal',
+                    'working_day_id' => $workingDayId,
+                    'date' => $cleanDates[0] ?? null
+                ]
             );
 
             jsonResponse([
@@ -447,7 +453,18 @@ switch ($action) {
                     INSERT INTO notifications (user_id, type, message, action_payload, created_at)
                     VALUES (?, 'working_day_all_voted', ?, ?, ?)
                 ");
-                $actionPayload = json_encode(['working_day_id' => $workingDayId, 'season' => $wd['season']]);
+                $pDates = [];
+                if (!empty($wd['proposed_dates'])) {
+                    $pDates = is_string($wd['proposed_dates']) ? json_decode($wd['proposed_dates'], true) : $wd['proposed_dates'];
+                }
+                $firstPropDate = !empty($pDates[0]) ? $pDates[0] : (!empty($wd['date']) ? $wd['date'] : null);
+                $actionPayload = json_encode([
+                    'working_day_id' => $workingDayId,
+                    'season' => $wd['season'],
+                    'proposed_dates' => $pDates,
+                    'date' => $firstPropDate,
+                    'type' => 'working_day_all_voted'
+                ]);
                 $insNotif->execute([$wd['user_id'], $completeMsg, $actionPayload, $nowStr]);
 
                 sendWebPushToUser(
@@ -455,7 +472,11 @@ switch ($action) {
                     $wd['user_id'],
                     "ChaletWeShare: Abstimmung komplett! 📊",
                     $completeMsg,
-                    ['type' => 'working_day_all_voted', 'working_day_id' => $workingDayId]
+                    [
+                        'type' => 'working_day_all_voted',
+                        'working_day_id' => $workingDayId,
+                        'date' => $firstPropDate
+                    ]
                 );
             }
         }
@@ -750,7 +771,12 @@ switch ($action) {
             INSERT INTO notifications (user_id, type, message, action_payload, created_at)
             VALUES (?, 'working_day_deleted', ?, ?, ?)
         ");
-        $actionPayload = json_encode(['working_day_id' => $workingDayId, 'season' => $wd['season']]);
+        $actionPayload = json_encode([
+            'working_day_id' => $workingDayId,
+            'season' => $wd['season'],
+            'date' => !empty($wd['date']) ? $wd['date'] : null,
+            'type' => 'working_day_deleted'
+        ]);
         foreach ($otherUsersStmt->fetchAll() as $ou) {
             $notifIns->execute([$ou['id'], $notifMsg, $actionPayload, $nowStr]);
         }
@@ -763,7 +789,8 @@ switch ($action) {
             [
                 'type' => 'working_day_deleted',
                 'working_day_id' => $workingDayId,
-                'season' => $wd['season']
+                'season' => $wd['season'],
+                'date' => !empty($wd['date']) ? $wd['date'] : null
             ]
         );
 

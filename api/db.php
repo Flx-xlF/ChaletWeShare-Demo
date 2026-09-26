@@ -274,6 +274,15 @@ function initMysqlSchema(PDO $pdo) {
         try {
             $pdo->exec("ALTER TABLE working_day_rsvps ADD COLUMN votes JSON DEFAULT NULL AFTER status");
         } catch (\Throwable $e) {}
+        try {
+            $pdo->exec("ALTER TABLE handover_notes ADD COLUMN is_acknowledged TINYINT(1) DEFAULT 0");
+        } catch (\Throwable $e) {}
+        try {
+            $pdo->exec("ALTER TABLE handover_notes ADD COLUMN acknowledged_by_name VARCHAR(100) DEFAULT NULL");
+        } catch (\Throwable $e) {}
+        try {
+            $pdo->exec("ALTER TABLE handover_notes ADD COLUMN acknowledged_at DATETIME DEFAULT NULL");
+        } catch (\Throwable $e) {}
     } catch (\Throwable $e) {
         // ignore if already exists or handled
     }
@@ -510,6 +519,16 @@ function initSqliteSchema(PDO $pdo) {
         }
         if (!$hasVotes) {
             $pdo->exec("ALTER TABLE working_day_rsvps ADD COLUMN votes TEXT DEFAULT NULL");
+        }
+        $cols = $pdo->query("PRAGMA table_info(handover_notes)")->fetchAll(PDO::FETCH_ASSOC);
+        $hasAck = false;
+        foreach ($cols as $col) {
+            if ($col['name'] === 'is_acknowledged') { $hasAck = true; break; }
+        }
+        if (!$hasAck) {
+            $pdo->exec("ALTER TABLE handover_notes ADD COLUMN is_acknowledged INTEGER DEFAULT 0");
+            $pdo->exec("ALTER TABLE handover_notes ADD COLUMN acknowledged_by_name TEXT DEFAULT NULL");
+            $pdo->exec("ALTER TABLE handover_notes ADD COLUMN acknowledged_at TEXT DEFAULT NULL");
         }
     } catch (\Throwable $e) {}
 }

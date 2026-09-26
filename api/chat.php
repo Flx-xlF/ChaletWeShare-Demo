@@ -470,10 +470,18 @@ switch ($action) {
         // Push to allowed sibling
         $pushMsg = "🤝 {$user['name']} hat dir die Doppelnutzung während des Unterhalts ({$mBlock['reason']}, {$mBlock['date_start']}) erlaubt!";
         try {
-            $actionPayload = json_encode(['maintenance_id' => $maintId]);
+            $actionPayload = json_encode([
+                'maintenance_id' => (int) $maintId,
+                'date' => $mBlock['date_start'],
+                'type' => 'overlap_approval'
+            ]);
             $notifIns = $pdo->prepare("INSERT INTO notifications (user_id, type, message, action_payload, created_at) VALUES (?, 'overlap_approval', ?, ?, ?)");
             $notifIns->execute([$allowedUserId, $pushMsg, $actionPayload, $now]);
-            sendWebPushToUser($pdo, $allowedUserId, 'Mitnutzung erlaubt! 🤝', $pushMsg, ['maintenance_id' => $maintId]);
+            sendWebPushToUser($pdo, $allowedUserId, 'Mitnutzung erlaubt! 🤝', $pushMsg, [
+                'maintenance_id' => (int) $maintId,
+                'date' => $mBlock['date_start'],
+                'type' => 'overlap_approval'
+            ]);
         } catch (Exception $e) {}
 
         jsonResponse([

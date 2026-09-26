@@ -59,6 +59,111 @@ export async function navigateToCalendarWithAction(actionFn) {
 }
 window.navigateToCalendarWithAction = navigateToCalendarWithAction;
 
+/**
+ * Unified deep-link dispatcher handling push notification clicks and
+ * drawer notification item clicks.
+ * @param {Object|string} target
+ */
+export async function handleDeepLink(target) {
+  if (!target) return;
+
+  // Handle plain string hash or ID
+  if (typeof target === 'string') {
+    if (target.startsWith('#/')) {
+      window.location.hash = target;
+      return;
+    }
+    if (target.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      await navigateToCalendarWithAction((cal) => cal.openDate(target));
+      return;
+    }
+    await navigateToCalendarWithAction((cal) => cal.openReservation(target));
+    return;
+  }
+
+  // Handle explicit route (e.g. '#/profile', '#/stats')
+  if (target.route) {
+    const cleanRoute = target.route.startsWith('#')
+      ? target.route
+      : `#${target.route.startsWith('/') ? '' : '/'}${target.route}`;
+    window.location.hash = cleanRoute;
+    return;
+  }
+
+  // Handle test push notification
+  if (target.type === 'test') {
+    window.location.hash = '#/profile';
+    notificationToast.show({
+      title: 'Test-Benachrichtigung',
+      message: 'Web Push funktioniert einwandfrei!',
+      type: 'info',
+      durationMs: 4000
+    });
+    return;
+  }
+
+  const resId = target.reservationId || target.reservation_id || target.related_reservation_id;
+  const maintId = target.maintenanceId || target.maintenance_id;
+  const wdId = target.workingDayId || target.working_day_id;
+  const date = target.date;
+  const action = target.action;
+  const type = target.type;
+
+  // 1. Handover prompt or note
+  if (action === 'handover_prompt' || action === 'handover_note' || type === 'handover_note' || type === 'handover_reminder') {
+    if (resId) {
+      await navigateToCalendarWithAction((cal) => cal.openHandoverForReservation(resId));
+      return;
+    }
+  }
+
+  // 2. Chat messages
+  if (type === 'chat_message') {
+    if (resId) {
+      await navigateToCalendarWithAction((cal) => cal.openMicroChatForReservation(resId));
+      return;
+    }
+    if (maintId) {
+      await navigateToCalendarWithAction((cal) => cal.openMicroChatForMaintenance(maintId));
+      return;
+    }
+  }
+
+  // 3. Working Days (proposals, reminders, finalized, voting)
+  if (wdId) {
+    await navigateToCalendarWithAction((cal) => cal.openWorkingDay(wdId, date));
+    return;
+  }
+
+  // 4. Maintenance
+  if (maintId) {
+    await navigateToCalendarWithAction((cal) => cal.openMaintenance(maintId, date));
+    return;
+  }
+
+  // 5. Cancellations: if date is available, go directly to free date
+  if (type === 'cancellation' && date) {
+    await navigateToCalendarWithAction((cal) => cal.openDate(date));
+    return;
+  }
+
+  // 6. Reservation details or conflict
+  if (resId) {
+    await navigateToCalendarWithAction((cal) => cal.openReservation(resId, date));
+    return;
+  }
+
+  // 7. General date
+  if (date) {
+    await navigateToCalendarWithAction((cal) => cal.openDate(date));
+    return;
+  }
+
+  // Fallback: navigate to calendar
+  await navigateToCalendarWithAction(() => {});
+}
+window.handleDeepLink = handleDeepLink;
+
 
 /* ─────────────────────────────────────────────
    PWA Auto-Update: Version Polling
@@ -164,18 +269,7 @@ function init() {
     navigator.serviceWorker.addEventListener('message', (event) => {
       if (event.data && event.data.type === 'NOTIFICATION_CLICK') {
         const payload = event.data.data || {};
-        if (payload.reservation_id) {
-          navigateToCalendarWithAction((cal) => cal.openReservation(payload.reservation_id));
-        } else if (payload.date) {
-          navigateToCalendarWithAction((cal) => cal.openDate(payload.date));
-        } else if (payload.maintenance_id) {
-          navigateToCalendarWithAction(async (cal) => {
-            const m = reservationStore.maintenanceBlocks?.find(b => b.id == payload.maintenance_id);
-            if (m && (m.dateStart || m.date_start)) {
-              await cal.openDate(m.dateStart || m.date_start);
-            }
-          });
-        }
+        handleDeepLink(payload);
       }
     });
   }
@@ -297,17 +391,7 @@ function renderAppShell(user) {
   if (notifContainer) {
     currentNotifBadge = new NotificationBadge(notifContainer, user, {
       onNotificationClick: async (target) => {
-        await navigateToCalendarWithAction(async (cal) => {
-          if (typeof target === 'object' && target !== null) {
-            if (target.reservationId) {
-              await cal.openReservation(target.reservationId);
-            } else if (target.date) {
-              await cal.openDate(target.date);
-            }
-          } else if (target) {
-            await cal.openReservation(target);
-          }
-        });
+        await handleDeepLink(target);
       }
     });
     currentNotifBadge.render();
@@ -371,6 +455,18 @@ function renderAppShell(user) {
   if (startupHash.startsWith('#/reservation/')) {
     const resId = startupHash.replace('#/reservation/', '');
     navigateToCalendarWithAction((cal) => cal.openReservation(resId));
+  } else if (startupHash.startsWith('#/working-day/')) {
+    const wdId = startupHash.replace('#/working-day/', '');
+    navigateToCalendarWithAction((cal) => cal.openWorkingDay(wdId));
+  } else if (startupHash.startsWith('#/maintenance/')) {
+    const maintId = startupHash.replace('#/maintenance/', '');
+    navigateToCalendarWithAction((cal) => cal.openMaintenance(maintId));
+  } else if (startupHash.startsWith('#/chat/res/')) {
+    const resId = startupHash.replace('#/chat/res/', '');
+    navigateToCalendarWithAction((cal) => cal.openMicroChatForReservation(resId));
+  } else if (startupHash.startsWith('#/chat/maint/')) {
+    const maintId = startupHash.replace('#/chat/maint/', '');
+    navigateToCalendarWithAction((cal) => cal.openMicroChatForMaintenance(maintId));
   } else if (startupHash.startsWith('#/date/')) {
     const date = startupHash.replace('#/date/', '');
     navigateToCalendarWithAction((cal) => cal.openDate(date));

@@ -962,6 +962,140 @@ p {
   box-shadow: 1px 1px 0px var(--color-danger);
 }
 
+/* Status: Collision / Doppelbuchung (Bold Bauhaus diagonal hazard stripes: #F20587 Hot Pink & #FFD600 Canary Yellow) */
+.day-cell--collision {
+  background: repeating-linear-gradient(
+    -45deg,
+    #F20587,
+    #F20587 6px,
+    #FFD600 6px,
+    #FFD600 12px
+  ) !important;
+  color: #1C1C1E !important;
+  border: 2px solid #1C1C1E !important;
+  box-shadow: inset 0 0 0 1px #FFFFFF !important;
+}
+
+.day-cell--collision .day-cell__num {
+  background-color: #1C1C1E;
+  color: #FFD600;
+  border-color: #FFD600;
+  box-shadow: 1px 1px 0px #1C1C1E;
+}
+
+.day-cell__collision-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  z-index: 3;
+}
+
+.day-cell__collision-avatars {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1px;
+}
+
+.day-cell__initial--collision {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  background: #1C1C1E;
+  color: #FFD600;
+  border: 1.5px solid #FFD600;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.day-cell__initial--collision:first-child {
+  margin-right: -4px;
+  z-index: 2;
+}
+
+.day-cell__collision-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: #1C1C1E;
+  border: 1.5px solid #FFD600;
+  box-shadow: 1.5px 1.5px 0px #1C1C1E;
+  padding: 1px 4px;
+  line-height: 1;
+  z-index: 3;
+}
+
+.day-cell__collision-icon {
+  font-size: 0.72rem;
+  line-height: 1;
+}
+
+.day-cell__collision-text {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 900;
+  color: #FFD600;
+  letter-spacing: 0.02em;
+}
+
+/* Status: Doppelnutzung vereinbart (Architectural slate #3D4350 and soft sage split) */
+.day-cell--doppelnutzung {
+  background: linear-gradient(135deg, #3D4350 50%, #CBD5E1 50%) !important;
+  color: #1C1C1E !important;
+  border: 2px solid #1C1C1E !important;
+}
+
+.day-cell--doppelnutzung .day-cell__num {
+  background-color: #3D4350;
+  color: #FFFFFF;
+  border-color: #1C1C1E;
+  box-shadow: 1px 1px 0px #1C1C1E;
+}
+
+.day-cell__doppelnutzung-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: #FFFFFF;
+  border: 1.5px solid #1C1C1E;
+  box-shadow: 1.5px 1.5px 0px #1C1C1E;
+  padding: 1px 4px;
+  line-height: 1;
+  z-index: 3;
+}
+
+.day-cell__initial--doppel {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 900;
+  color: #1C1C1E;
+}
+
+/* Handover Notes Indicator in Day Cell Header */
+.day-cell__handover-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  color: var(--color-accent);
+  background: #FFFFFF;
+  border: 1px solid var(--color-border);
+  box-shadow: 0.5px 0.5px 0px var(--color-border);
+  line-height: 1;
+}
+
+.day-cell__handover-badge svg {
+  width: 10px;
+  height: 10px;
+  display: block;
+}
+
 .day-cell--booked .day-cell__num {
   background-color: #F2F2F2;
   color: #0D0D0D;
@@ -1745,6 +1879,36 @@ p {
   border: 1.5px solid var(--color-border);
 }
 
+.legend-swatch--collision {
+  background: repeating-linear-gradient(
+    -45deg,
+    #F20587,
+    #F20587 3px,
+    #FFD600 3px,
+    #FFD600 6px
+  );
+  border: 1.5px solid #1C1C1E;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.legend-swatch--doppelnutzung {
+  background: linear-gradient(135deg, #3D4350 50%, #CBD5E1 50%);
+  border: 1.5px solid #1C1C1E;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.legend-swatch--handover {
+  background: #FFFFFF;
+  border: 1.5px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .legend-sheet__info {
   font-size: 0.8rem;
   line-height: 1.35;
@@ -2065,6 +2229,40 @@ p {
   font-size: 0.7rem;
   color: var(--color-text-muted);
   font-weight: 500;
+}
+
+.notif-item__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 5px;
+}
+
+.notif-item__link-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-blue);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  padding: 2px 7px;
+  border-radius: 4px;
+  box-shadow: 1px 1px 0px rgba(0, 0, 0, 0.9);
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.notif-item:hover .notif-item__link-badge,
+.notif-item:focus-visible .notif-item__link-badge {
+  background: var(--color-yellow);
+  color: var(--color-black);
+  transform: translate(-1px, -1px);
+  box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.9);
 }
 
 .notif-empty {

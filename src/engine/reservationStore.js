@@ -60,6 +60,7 @@ export class ReservationStore {
           dateStart: formatDateISO(dBookedStart),
           dateEnd: formatDateISO(dBookedEnd),
           status: 'booked',
+          handover_count: 1,
           createdAt: new Date().toISOString()
         },
         {
@@ -76,6 +77,25 @@ export class ReservationStore {
         }
       ];
       this._saveReservations();
+
+      if (!localStorage.getItem('chalet_handover_notes')) {
+        localStorage.setItem('chalet_handover_notes', JSON.stringify([
+          {
+            id: 1,
+            reservation_id: 'res-demo-1',
+            author_user_id: 1,
+            author_name: 'Elena',
+            author_avatar: 'swan',
+            target_reservation_id: 'res-demo-2',
+            category: 'garbage',
+            message: 'Kehrichtsack bereitgestellt und Kaminholz im Schuppen nachgefüllt.',
+            is_acknowledged: 0,
+            acknowledged_by_name: null,
+            acknowledged_at: null,
+            created_at: new Date().toISOString()
+          }
+        ]));
+      }
     }
 
     if (rawMaint) {
@@ -164,31 +184,96 @@ export class ReservationStore {
       };
     }
 
-    // Check maintenance blocks first
+    const hasHandover = (r) => {
+      if (!r) return false;
+      if (r.handover_count && r.handover_count > 0) return true;
+      try {
+        const raw = localStorage.getItem('chalet_handover_notes');
+        if (raw) {
+          const notes = JSON.parse(raw);
+          if (notes.some((n) => n.reservation_id == r.id)) return true;
+        }
+      } catch (e) {}
+      return false;
+    };
+
+    // Check maintenance blocks
     const maint = this.maintenance.find((m) => {
-      return dateISO >= m.dateStart && dateISO <= m.dateEnd;
+      const mStart = m.dateStart || m.date_start;
+      const mEnd = m.dateEnd || m.date_end;
+      return dateISO >= mStart && dateISO <= mEnd;
     });
 
+    // Check reservations (can match multiple for changeovers, doppelnutzung or collisions)
+    const matchingReservations = this.reservations.filter((r) => {
+      const rStart = r.dateStart || r.date_start;
+      const rEnd = r.dateEnd || r.date_end;
+      return dateISO >= rStart && dateISO <= rEnd && r.status !== 'cancelled';
+    });
+
+    // True Doppelnutzung during full maintenance: don't eclipse the booking!
     if (maint && maint.halfDay === 'full') {
+      if (matchingReservations.length > 0) {
+        return {
+          status: 'doppelnutzung',
+          bookingSlot: 'full',
+          info: matchingReservations[0],
+          maintSlot: 'full',
+          maintInfo: maint,
+          hasHandoverNotes: hasHandover(matchingReservations[0])
+        };
+      }
       return { status: 'maintenance', maintSlot: 'full', info: maint, bookingSlot: null };
     }
 
-    // Check reservations (can match up to 2 for shared changeover days)
-    const matchingReservations = this.reservations.filter((r) => {
-      return dateISO >= r.dateStart && dateISO <= r.dateEnd && r.status !== 'cancelled';
-    });
-
-    // Shared changeover day: 2 back-to-back reservations meeting on this date
+    // Multiple reservations covering this date
     if (matchingReservations.length > 1) {
-      const resOut = matchingReservations.find((r) => r.dateEnd === dateISO);
-      const resIn = matchingReservations.find((r) => r.dateStart === dateISO);
-      const hasConflict = (resOut && resOut.status === 'vetoed') || (resIn && resIn.status === 'vetoed');
+      const resOut = matchingReservations.find((r) => (r.dateEnd || r.date_end) === dateISO);
+      const resIn = matchingReservations.find((r) => (r.dateStart || r.date_start) === dateISO);
+      const isExactTurnover = (matchingReservations.length === 2 && resOut && resIn && resOut.id !== resIn.id);
+
+      if (isExactTurnover) {
+        const hasConflict = (resOut.status === 'vetoed') || (resIn.status === 'vetoed');
+        return {
+          status: hasConflict ? 'conflict' : 'shared',
+          bookingSlot: 'shared',
+          checkoutInfo: resOut,
+          checkinInfo: resIn,
+          info: resOut,
+          hasHandoverNotes: hasHandover(resOut),
+          maintSlot: maint ? maint.halfDay : null,
+          maintInfo: maint || null
+        };
+      }
+
+      // Check if officially agreed Doppelnutzung
+      const isAgreedDoppelnutzung = matchingReservations.some((r) =>
+        r.resolution?.resolution_type === 'shared' || r.is_shared || r.status === 'shared'
+      );
+
+      if (isAgreedDoppelnutzung) {
+        return {
+          status: 'doppelnutzung',
+          bookingSlot: 'doppelnutzung',
+          info: matchingReservations[0],
+          checkoutInfo: matchingReservations[0],
+          checkinInfo: matchingReservations[1] || matchingReservations[0],
+          collidingReservations: matchingReservations,
+          hasHandoverNotes: matchingReservations.some(hasHandover),
+          maintSlot: maint ? maint.halfDay : null,
+          maintInfo: maint || null
+        };
+      }
+
+      // Actual collision / Doppelbuchung (unresolved clash)
       return {
-        status: hasConflict ? 'conflict' : 'shared',
-        bookingSlot: 'shared',
-        checkoutInfo: resOut || matchingReservations[0],
-        checkinInfo: resIn || matchingReservations[1],
-        info: resOut || resIn,
+        status: 'collision',
+        bookingSlot: 'collision',
+        info: matchingReservations[0],
+        checkoutInfo: matchingReservations[0],
+        checkinInfo: matchingReservations[1] || matchingReservations[0],
+        collidingReservations: matchingReservations,
+        hasHandoverNotes: matchingReservations.some(hasHandover),
         maintSlot: maint ? maint.halfDay : null,
         maintInfo: maint || null
       };
@@ -196,16 +281,23 @@ export class ReservationStore {
 
     if (matchingReservations.length === 1) {
       const res = matchingReservations[0];
+      const rStart = res.dateStart || res.date_start;
+      const rEnd = res.dateEnd || res.date_end;
       let bookingSlot = 'full';
-      if (dateISO === res.dateStart) {
+      if (dateISO === rStart) {
         bookingSlot = 'checkin';
-      } else if (dateISO === res.dateEnd) {
+      } else if (dateISO === rEnd) {
         bookingSlot = 'checkout';
       }
+
+      const isDoppelnutzung = res.resolution?.resolution_type === 'shared';
+      const effectiveStatus = res.status === 'vetoed' ? 'conflict' : (isDoppelnutzung ? 'doppelnutzung' : res.status);
+
       return {
-        status: res.status === 'vetoed' ? 'conflict' : res.status, // 'pending', 'booked' or 'conflict'
+        status: effectiveStatus,
         bookingSlot,
         info: res,
+        hasHandoverNotes: (dateISO === rEnd) && hasHandover(res),
         maintSlot: maint ? maint.halfDay : null,
         maintInfo: maint || null
       };
@@ -234,6 +326,20 @@ export class ReservationStore {
   addMaintenance(maintData) {
     this.maintenance.push(maintData);
     this._saveMaintenance();
+  }
+
+  updateMaintenanceLocally(maintenanceId, { halfDay, reason }) {
+    const m = this.maintenance.find((item) => item.id == maintenanceId);
+    if (m) {
+      if (halfDay !== undefined) {
+        m.halfDay = halfDay;
+        m.half_day = halfDay;
+      }
+      if (reason !== undefined) {
+        m.reason = reason;
+      }
+      this._saveMaintenance();
+    }
   }
 
   addWorkingDay(workingDayData) {
