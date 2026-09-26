@@ -810,6 +810,13 @@ export class CalendarScreen {
   }
 
   _openDayDetailModal(dateISO) {
+    if (!dateISO) return;
+    const dayData = reservationStore.getDayStatus(dateISO);
+    // Never open inspection modal for completely free days!
+    if (!dayData || dayData.status === 'free') {
+      return;
+    }
+
     const modalContainer = document.getElementById('cal-sheet-modal');
     openDayDetailSheet({
       container: modalContainer,
@@ -838,8 +845,15 @@ export class CalendarScreen {
       if (navEl) navEl.classList.add('is-hidden');
       const datesLabel = document.getElementById('sel-dates-label');
       const durationLabel = document.getElementById('sel-duration-label');
+      const bookBtn = document.getElementById('sel-btn-book');
       if (datesLabel) datesLabel.innerHTML = this._getSelectionLabel();
       if (durationLabel) durationLabel.innerHTML = this._getDurationLabel();
+      if (bookBtn) {
+        const nights = (this.selectedEnd && this.selectedEnd !== this.selectedStart)
+          ? countNights(this.selectedStart, this.selectedEnd)
+          : 1;
+        bookBtn.innerHTML = `Reservieren (${nights} ${nights === 1 ? 'Nacht' : 'Nächte'})`;
+      }
     } else {
       if (barEl) barEl.classList.remove('is-visible');
       if (navEl) navEl.classList.remove('is-hidden');
@@ -850,8 +864,7 @@ export class CalendarScreen {
   _getSelectionLabel() {
     if (!this.selectedStart) return '';
     if (!this.selectedEnd || this.selectedStart === this.selectedEnd) {
-      const defaultEnd = addDays(this.selectedStart, 1);
-      return `${formatDateFriendly(this.selectedStart)} – ${formatDateFriendly(defaultEnd)}`;
+      return `Check-in: <strong>${formatDateFriendly(this.selectedStart)}</strong>`;
     }
     return `${formatDateFriendly(this.selectedStart)} – ${formatDateFriendly(this.selectedEnd)}`;
   }
@@ -859,10 +872,10 @@ export class CalendarScreen {
   _getDurationLabel() {
     if (!this.selectedStart) return '';
     if (!this.selectedEnd || this.selectedStart === this.selectedEnd) {
-      return '1 Nacht (Check-out Folgetag)';
+      return '<span style="color: var(--color-accent); font-weight: 700;">👆 Abreisetag wählen</span> (oder 1 Nacht)';
     }
     const nights = countNights(this.selectedStart, this.selectedEnd);
-    return `${nights} Nächte`;
+    return `${nights} ${nights === 1 ? 'Nacht' : 'Nächte'}`;
   }
 
   /**

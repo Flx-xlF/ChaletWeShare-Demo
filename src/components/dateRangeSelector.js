@@ -30,6 +30,7 @@ export class DateRangeSelector {
     this.touchStartX = 0;
     this.touchStartY = 0;
     this.touchStartTime = 0;
+    this.lastTouchProcessTime = 0;
     this.isScrolling = false;
     this.pendingTouchCellData = null;
 
@@ -102,6 +103,11 @@ export class DateRangeSelector {
   _handlePointerDown(e) {
     const cell = this._getCellFromEvent(e);
     if (!cell) return;
+
+    // Suppress synthetic mouse events dispatched by WebKit/Safari after a touch gesture
+    if (e.pointerType !== 'touch' && (Date.now() - this.lastTouchProcessTime < 450)) {
+      return;
+    }
 
     const dateISO = cell.getAttribute('data-date');
     const isDisabled = cell.getAttribute('data-disabled') === 'true';
@@ -189,6 +195,7 @@ export class DateRangeSelector {
 
         // Clean tap: within threshold and duration under 500ms
         if (deltaX <= 10 && deltaY <= 10 && elapsed < 500) {
+          this.lastTouchProcessTime = Date.now();
           const { dateISO, isDisabled, status, bookingSlot, maintSlot } = this.pendingTouchCellData;
           this._processDateSelection(dateISO, isDisabled, status, bookingSlot, maintSlot, false);
         }
@@ -223,7 +230,7 @@ export class DateRangeSelector {
   _processDateSelection(dateISO, isDisabled, status, bookingSlot, maintSlot, isMouse = false) {
     if (!dateISO) return;
 
-    // Allow inspecting past days if they contain a booking, conflict, or maintenance
+    // Allow inspecting past days only if they contain a booking, conflict, or maintenance
     if (isDisabled) {
       if (status && status !== 'free' && this.onDayClick) {
         this.onDayClick(dateISO, status);
@@ -245,6 +252,7 @@ export class DateRangeSelector {
     const isCollision = status === 'collision';
     const isDoppelnutzung = status === 'doppelnutzung';
     const isReservation = status === 'booked' || status === 'pending' || status === 'conflict' || isCollision || isDoppelnutzung;
+    const isOccupiedDay = isWorkingDay || isShared || isMaintenance || isCollision || isDoppelnutzung || isReservation;
 
     // Morning block: no checkout / departure possible
     // (morning occupied by: reservation checkout, morning maintenance, or full block)
@@ -262,48 +270,86 @@ export class DateRangeSelector {
 
     const isFullBlock = isMorningBlocked && isAfternoonBlocked;
 
-    // 1. Full blocks: always trigger inspection
-    if (isFullBlock) {
+    // 1. Full blocks: always trigger inspection if occupied
+    if (isFullBlock && isOccupiedDay) {
       if (this.onDayClick) {
         this.onDayClick(dateISO, status);
       }
       return;
     }
 
-    // 2. Setting or restarting arrival date (startDate)
-    if (!this.startDate || (this.startDate && this.endDate)) {
-      // Any existing maintenance block (full, morning, or afternoon) or collision/shared/blocked day
-      // must trigger inspection so the user can view, edit, or manage the entry!
-      if (isMaintenance || isCollision || isDoppelnutzung || isWorkingDay || isShared || isAfternoonBlocked) {
+    // 2. Both startDate and endDate already set: dynamic range refinement
+    if (this.startDate && this.endDate) {
+      // If tapping an occupied day that has blocked afternoon, trigger inspection
+      if (isOccupiedDay && isAfternoonBlocked && dateISO !== this.startDate && dateISO !== this.endDate) {
         if (this.onDayClick) {
           this.onDayClick(dateISO, status);
         }
         return;
       }
 
-      if (isMouse) {
-        this.isDragging = true;
-        this.hasMoved = false;
-        this.dragStartISO = dateISO;
+      // Tapping the start date: toggle/clear range
+      if (dateISO === this.startDate) {
+        this.clearRange();
+        return;
       }
 
-      this.startDate = dateISO;
-      this.endDate = null;
-      if (navigator.vibrate) navigator.vibrate(10);
-      this.updateCellHighlighting();
-      if (this.onRangeChange) {
-        this.onRangeChange(this.startDate, this.endDate);
+      // Tapping the end date: collapse back to start date only (waiting for new checkout)
+      if (dateISO === this.endDate) {
+        this.endDate = null;
+        if (navigator.vibrate) navigator.vibrate(10);
+        this.updateCellHighlighting();
+        if (this.onRangeChange) {
+          this.onRangeChange(this.startDate, null);
+        }
+        return;
       }
-      return;
+
+      const d1 = parseDateISO(this.startDate).getTime();
+      const dTarget = parseDateISO(dateISO).getTime();
+
+      if (dTarget > d1) {
+        // Tapping a later date: extend or shorten checkout!
+        if (isMorningBlocked && isOccupiedDay) {
+          if (this.onDayClick) this.onDayClick(dateISO, status);
+          return;
+        }
+        this.endDate = dateISO;
+        if (navigator.vibrate) navigator.vibrate([10, 30, 10]);
+        this.updateCellHighlighting();
+        if (this.onRangeSelected) {
+          this.onRangeSelected(this.startDate, this.endDate);
+        } else if (this.onRangeChange) {
+          this.onRangeChange(this.startDate, this.endDate);
+        }
+        return;
+      } else {
+        // Tapping an earlier date: shift check-in earlier
+        if (isAfternoonBlocked && isOccupiedDay) {
+          if (this.onDayClick) this.onDayClick(dateISO, status);
+          return;
+        }
+        this.startDate = dateISO;
+        if (navigator.vibrate) navigator.vibrate([10, 30, 10]);
+        this.updateCellHighlighting();
+        if (this.onRangeSelected) {
+          this.onRangeSelected(this.startDate, this.endDate);
+        } else if (this.onRangeChange) {
+          this.onRangeChange(this.startDate, this.endDate);
+        }
+        return;
+      }
     }
 
     // 3. User already selected a startDate, now picking departure date (endDate)
     if (this.startDate && !this.endDate) {
-      // Tapping the already selected start date opens inspection modal
+      // Tapping the already selected start date: toggle / deselect (NEVER open empty modal on free day!)
       if (this.startDate === dateISO) {
         this.isDragging = false;
-        if (this.onDayClick) {
+        if (isOccupiedDay && this.onDayClick) {
           this.onDayClick(dateISO, status);
+        } else {
+          this.clearRange();
         }
         return;
       }
@@ -320,7 +366,7 @@ export class DateRangeSelector {
       }
 
       if (d2 > d1) {
-        if (isMorningBlocked) {
+        if (isMorningBlocked && isOccupiedDay) {
           // Cannot depart in the morning here; inspect day
           if (this.onDayClick) {
             this.onDayClick(dateISO, status);
@@ -329,10 +375,10 @@ export class DateRangeSelector {
         }
         this.endDate = finalDate;
       } else if (d2 < d1) {
-        // User tapped an earlier date: swap only if earlier date has free afternoon
-        if (!isAfternoonBlocked) {
-          this.endDate = this.startDate;
+        // User tapped an earlier date: shift check-in to that earlier date
+        if (!isAfternoonBlocked || !isOccupiedDay) {
           this.startDate = finalDate;
+          this.endDate = null;
         } else {
           if (this.onDayClick) {
             this.onDayClick(dateISO, status);
@@ -354,10 +400,29 @@ export class DateRangeSelector {
       return;
     }
 
+    // 4. Initial check-in selection (startDate is null)
+    // Any existing occupied day with blocked afternoon triggers inspection
+    if (isOccupiedDay && (isMaintenance || isCollision || isDoppelnutzung || isWorkingDay || isShared || isAfternoonBlocked)) {
+      if (this.onDayClick) {
+        this.onDayClick(dateISO, status);
+      }
+      return;
+    }
+
+    if (isMouse) {
+      this.isDragging = true;
+      this.hasMoved = false;
+      this.dragStartISO = dateISO;
+    }
+
+    this.startDate = dateISO;
+    this.endDate = null;
+    if (navigator.vibrate) navigator.vibrate(10);
     this.updateCellHighlighting();
     if (this.onRangeChange) {
       this.onRangeChange(this.startDate, this.endDate);
     }
+    return;
   }
 
   updateCellHighlighting() {
