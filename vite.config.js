@@ -58,6 +58,10 @@ function copyApiPlugin() {
           if (file.endsWith('.sqlite') || file.endsWith('.sqlite-journal') || file.endsWith('.sqlite-wal') || file.endsWith('.sqlite-shm')) {
             return false;
           }
+          // Never leak real or example configuration files
+          if (file.startsWith('config.') || file === 'config.php' || file === 'config.example.php') {
+            return false;
+          }
           // Exclude dev/template files
           if (EXCLUDED_FILES.has(file)) {
             return false;
