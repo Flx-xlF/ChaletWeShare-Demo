@@ -12,6 +12,26 @@ $pdo = getDbConnection();
 $config = getConfig();
 
 switch ($action) {
+    case 'health':
+        $hasConfig = file_exists(__DIR__ . '/config.php');
+        $hasPasswordHash = !empty($config['family_password_hash']);
+        $dbOk = false;
+        $dbDriver = 'none';
+        try {
+            $testPdo = getDbConnection();
+            $dbDriver = $testPdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+            $dbOk = true;
+        } catch (\Throwable $e) {}
+        jsonResponse([
+            'status' => 'ok',
+            'config_loaded' => $hasConfig,
+            'password_configured' => $hasPasswordHash,
+            'db_connected' => $dbOk,
+            'db_driver' => $dbDriver,
+            'timestamp' => date('c')
+        ]);
+        break;
+
     case 'verify_gate':
         $submittedHash = $input['password_hash'] ?? '';
         $submittedPassword = $input['password'] ?? '';
@@ -20,13 +40,19 @@ switch ($action) {
         // Anti-bruteforce delay
         usleep(150000);
 
+        if (empty($expectedHash)) {
+            error_log('[ChaletWeShare] verify_gate error: family_password_hash is empty or missing from config.php');
+            jsonResponse([
+                'success' => false, 
+                'error' => 'Server-Konfigurationsfehler: config.php fehlt oder family_password_hash ist nicht konfiguriert.'
+            ], 500);
+        }
+
         $valid = false;
-        if (!empty($expectedHash)) {
-            if (!empty($submittedHash) && hash_equals($expectedHash, $submittedHash)) {
-                $valid = true;
-            } elseif (!empty($submittedPassword) && (password_verify($submittedPassword, $expectedHash) || hash_equals($expectedHash, hash('sha256', $submittedPassword)))) {
-                $valid = true;
-            }
+        if (!empty($submittedHash) && hash_equals($expectedHash, $submittedHash)) {
+            $valid = true;
+        } elseif (!empty($submittedPassword) && (password_verify($submittedPassword, $expectedHash) || hash_equals($expectedHash, hash('sha256', $submittedPassword)))) {
+            $valid = true;
         }
 
         if ($valid) {

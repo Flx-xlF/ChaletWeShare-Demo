@@ -96,6 +96,12 @@ class ReservationEngine {
         headers, 
         cache: 'no-store' 
       });
+      if (res.status === 401) {
+        console.warn('[reservationEngine] Gate unauthorized (401) fetching calendar data.');
+        profileManager.lockGate(false);
+        window.dispatchEvent(new CustomEvent('auth:gate_expired'));
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
         if (data.success) {

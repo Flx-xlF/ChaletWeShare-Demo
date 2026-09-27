@@ -964,6 +964,15 @@ function renderProfileScreen(mountEl, user) {
   });
 }
 
+// Listen for gate expiration events to gracefully re-prompt gate entry without page reloads
+window.addEventListener('auth:gate_expired', () => {
+  if (!profileManager.isGateUnlocked()) {
+    if (currentNotifBadge) currentNotifBadge.stopPolling();
+    if (currentChatHubBadge) currentChatHubBadge.destroy();
+    renderAuthGate(app, () => init());
+  }
+});
+
 // Start application
 init();
 

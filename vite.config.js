@@ -69,7 +69,9 @@ function copyApiPlugin() {
           return true;
         }
       });
-      console.log('✅ Sanitized api/ copied to dist/api/ (sqlite & dev files excluded)\n');
+      console.log('✅ Sanitized api/ copied to dist/api/ (sqlite & dev files excluded)');
+      console.log('⚠️  DEPLOYMENT REMINDER: dist/api/ does NOT include config.php.');
+      console.log('   Do NOT delete or overwrite api/config.php on the production server!\n');
     }
   };
 }

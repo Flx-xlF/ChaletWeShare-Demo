@@ -433,7 +433,7 @@ export async function renderProfilePicker(container, onProfileSelected, options 
     const relockBtn = container.querySelector('#btn-relock');
     if (relockBtn) {
       relockBtn.addEventListener('click', () => {
-        profileManager.lockGate();
+        profileManager.lockGate(true);
         location.reload();
       });
     }

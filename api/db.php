@@ -10,7 +10,12 @@ function getConfig() {
         if (!file_exists($configFile)) {
             $configFile = __DIR__ . '/config.example.php';
         }
-        $config = file_exists($configFile) ? require $configFile : [];
+        if (file_exists($configFile)) {
+            $config = require $configFile;
+        } else {
+            error_log('[ChaletWeShare] CRITICAL: Neither config.php nor config.example.php exists in ' . __DIR__);
+            $config = [];
+        }
     }
     return $config;
 }

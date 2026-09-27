@@ -108,10 +108,12 @@ export class ProfileManager {
     return { success: true, offline: true };
   }
 
-  lockGate() {
+  lockGate(clearActiveProfile = false) {
     localStorage.removeItem(STORAGE_KEYS.GATE_TOKEN);
     localStorage.removeItem(STORAGE_KEYS.UNLOCKED);
-    localStorage.removeItem(STORAGE_KEYS.ACTIVE_PROFILE);
+    if (clearActiveProfile) {
+      localStorage.removeItem(STORAGE_KEYS.ACTIVE_PROFILE);
+    }
   }
 
   getActiveProfile() {
@@ -156,9 +158,11 @@ export class ProfileManager {
         }),
       });
       if (res.status === 401) {
-        this.lockGate();
-        location.reload();
-        return [];
+        console.warn('[profileManager] Gate unauthorized (401) fetching profiles.');
+        this.lockGate(false);
+        window.dispatchEvent(new CustomEvent('auth:gate_expired'));
+        const cached = localStorage.getItem(STORAGE_KEYS.PROFILES_CACHE);
+        return cached ? JSON.parse(cached) : [];
       }
       const data = await res.json();
       if (data.success && Array.isArray(data.users)) {
