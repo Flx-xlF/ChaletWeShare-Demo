@@ -1,6 +1,6 @@
 /**
  * ChaletWeShare — Date Range Selector
- * Supports both touch-drag selection and dual-tap (Start -> End) selection.
+ * Supports dual-tap (Start -> End) selection on touch devices and mouse drag-to-select on desktop.
  */
 
 import { parseDateISO, formatDateISO, isDateInRange } from '../utils/dateUtils.js';
@@ -26,24 +26,23 @@ export class DateRangeSelector {
     this.dragStartISO = null;
     this.hasMoved = false;
 
-    // Touch gesture disambiguation
-    this.touchStartX = 0;
-    this.touchStartY = 0;
-    this.touchStartTime = 0;
-    this.lastTouchProcessTime = 0;
-    this.isScrolling = false;
-    this.pendingTouchCellData = null;
+    this._lastMouseUpTime = 0;
+    this._lastTouchTime = 0;
 
     this._onPointerDown = this._handlePointerDown.bind(this);
     this._onPointerMove = this._handlePointerMove.bind(this);
     this._onPointerUp = this._handlePointerUp.bind(this);
     this._onPointerCancel = this._handlePointerCancel.bind(this);
+    this._onClick = this._handleClick.bind(this);
+    this._onTouchStart = () => { this._lastTouchTime = Date.now(); };
 
     this.attach();
   }
 
   attach() {
     this.container.addEventListener('pointerdown', this._onPointerDown);
+    this.container.addEventListener('click', this._onClick);
+    this.container.addEventListener('touchstart', this._onTouchStart, { passive: true });
     window.addEventListener('pointermove', this._onPointerMove, { passive: false });
     window.addEventListener('pointerup', this._onPointerUp);
     window.addEventListener('pointercancel', this._onPointerCancel);
@@ -51,6 +50,8 @@ export class DateRangeSelector {
 
   destroy() {
     this.container.removeEventListener('pointerdown', this._onPointerDown);
+    this.container.removeEventListener('click', this._onClick);
+    this.container.removeEventListener('touchstart', this._onTouchStart);
     window.removeEventListener('pointermove', this._onPointerMove);
     window.removeEventListener('pointerup', this._onPointerUp);
     window.removeEventListener('pointercancel', this._onPointerCancel);
@@ -100,49 +101,61 @@ export class DateRangeSelector {
     return null;
   }
 
-  _handlePointerDown(e) {
-    const cell = this._getCellFromEvent(e);
-    if (!cell) return;
-
-    // Suppress synthetic mouse events dispatched by WebKit/Safari after a touch gesture
-    if (e.pointerType !== 'touch' && (Date.now() - this.lastTouchProcessTime < 450)) {
+  _handleClick(e) {
+    // Prevent synthetic click firing right after a mouseup pointer event
+    if (Date.now() - this._lastMouseUpTime < 350) {
       return;
     }
+
+    const cell = this._getCellFromEvent(e);
+    if (!cell) return;
 
     const dateISO = cell.getAttribute('data-date');
     const isDisabled = cell.getAttribute('data-disabled') === 'true';
     const status = cell.getAttribute('data-status');
     const bookingSlot = cell.getAttribute('data-booking-slot');
+    const maintSlot = cell.getAttribute('data-maint-slot');
 
     if (!dateISO) return;
 
-    // For touch pointers, defer selection until pointerup to differentiate between tap and scroll
-    const maintSlot = cell.getAttribute('data-maint-slot');
+    this._processDateSelection(dateISO, isDisabled, status, bookingSlot, maintSlot, false);
+  }
+
+  _handlePointerDown(e) {
     if (e.pointerType === 'touch') {
-      this.touchStartX = e.clientX;
-      this.touchStartY = e.clientY;
-      this.touchStartTime = Date.now();
-      this.isScrolling = false;
-      this.pendingTouchCellData = { dateISO, isDisabled, status, bookingSlot, maintSlot };
+      const cell = this._getCellFromEvent(e);
+      if (cell) {
+        this.touchStartCell = cell;
+        this.touchStartX = e.clientX;
+        this.touchStartY = e.clientY;
+        this.touchStartTime = Date.now();
+      }
       return;
     }
+
+    // Suppress synthetic mouse events dispatched by WebKit/Safari after a touch gesture
+    if (Date.now() - this._lastTouchTime < 450) {
+      return;
+    }
+
+    const cell = this._getCellFromEvent(e);
+    if (!cell) return;
+
+    const dateISO = cell.getAttribute('data-date');
+    const isDisabled = cell.getAttribute('data-disabled') === 'true';
+    const status = cell.getAttribute('data-status');
+    const bookingSlot = cell.getAttribute('data-booking-slot');
+    const maintSlot = cell.getAttribute('data-maint-slot');
+
+    if (!dateISO) return;
 
     // Mouse / Pen: handle immediately and allow drag selection
     this._processDateSelection(dateISO, isDisabled, status, bookingSlot, maintSlot, true);
   }
 
   _handlePointerMove(e) {
-    // Touch interactions: check movement threshold to detect scrolling
+    // Touch devices scroll natively; no pointer drag handling needed
     if (e.pointerType === 'touch') {
-      if (this.pendingTouchCellData && !this.isScrolling) {
-        const deltaX = Math.abs(e.clientX - this.touchStartX);
-        const deltaY = Math.abs(e.clientY - this.touchStartY);
-        if (deltaX > 8 || deltaY > 8) {
-          this.isScrolling = true;
-          this.pendingTouchCellData = null;
-        }
-      }
-      // Never block native scroll on touch
       return;
     }
 
@@ -188,22 +201,31 @@ export class DateRangeSelector {
 
   _handlePointerUp(e) {
     if (e.pointerType === 'touch') {
-      if (this.pendingTouchCellData && !this.isScrolling) {
-        const deltaX = Math.abs(e.clientX - this.touchStartX);
-        const deltaY = Math.abs(e.clientY - this.touchStartY);
-        const elapsed = Date.now() - this.touchStartTime;
+      const cell = this.touchStartCell;
+      this.touchStartCell = null;
+      if (cell) {
+        const deltaX = Math.abs(e.clientX - (this.touchStartX || 0));
+        const deltaY = Math.abs(e.clientY - (this.touchStartY || 0));
+        const elapsed = Date.now() - (this.touchStartTime || 0);
 
-        // Clean tap: within threshold and duration under 500ms
-        if (deltaX <= 10 && deltaY <= 10 && elapsed < 500) {
-          this.lastTouchProcessTime = Date.now();
-          const { dateISO, isDisabled, status, bookingSlot, maintSlot } = this.pendingTouchCellData;
-          this._processDateSelection(dateISO, isDisabled, status, bookingSlot, maintSlot, false);
+        // Clean tap: within movement threshold and duration under 500ms
+        if (deltaX <= 15 && deltaY <= 15 && elapsed < 500) {
+          const dateISO = cell.getAttribute('data-date');
+          const isDisabled = cell.getAttribute('data-disabled') === 'true';
+          const status = cell.getAttribute('data-status');
+          const bookingSlot = cell.getAttribute('data-booking-slot');
+          const maintSlot = cell.getAttribute('data-maint-slot');
+
+          if (dateISO) {
+            this._processDateSelection(dateISO, isDisabled, status, bookingSlot, maintSlot, false);
+          }
         }
       }
-      this.pendingTouchCellData = null;
-      this.isScrolling = false;
+      this._lastMouseUpTime = Date.now(); // Block subsequent native click event
       return;
     }
+
+    this._lastMouseUpTime = Date.now();
 
     if (!this.isDragging) return;
     this.isDragging = false;
@@ -222,8 +244,7 @@ export class DateRangeSelector {
   }
 
   _handlePointerCancel() {
-    this.pendingTouchCellData = null;
-    this.isScrolling = false;
+    this.touchStartCell = null;
     this.isDragging = false;
   }
 
@@ -248,7 +269,7 @@ export class DateRangeSelector {
 
     const isWorkingDay = status === 'working_day';
     const isShared = status === 'shared';
-    const isMaintenance = status === 'maintenance' || !!maintSlot;
+    const isMaintenance = status === 'maintenance' || (Boolean(maintSlot) && status !== 'free');
     const isCollision = status === 'collision';
     const isDoppelnutzung = status === 'doppelnutzung';
     const isReservation = status === 'booked' || status === 'pending' || status === 'conflict' || isCollision || isDoppelnutzung;

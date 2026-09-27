@@ -352,7 +352,7 @@ export class CalendarScreen {
           isDisabled,
           status: dayData.status,
           bookingSlot: dayData.bookingSlot,
-          maintSlot: dayData.maintSlot || 'full',
+          maintSlot: dayData.maintSlot || (dayData.status === 'maintenance' ? 'full' : null),
           reservation: dayData.info,
           workingDay: dayData.workingDay,
           checkoutInfo: dayData.checkoutInfo,

@@ -32,7 +32,7 @@ export function renderDayCell({
   isDisabled = false,
   status = 'free',
   bookingSlot = null,
-  maintSlot = 'full',
+  maintSlot = null,
   reservation = null,
   workingDay = null,
   checkoutInfo = null,
