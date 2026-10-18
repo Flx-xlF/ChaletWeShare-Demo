@@ -375,7 +375,7 @@ export function openMicroChat({ container, reservation = null, maintenance = nul
       } else {
         allowOverlapBtn.disabled = false;
         allowOverlapBtn.textContent = 'Mitnutzung offiziell erlauben';
-        alert(res.error || 'Fehler beim Erlauben.');
+        notificationToast.showError('Fehler', res.error || 'Fehler beim Erlauben.', 'Buchung');
       }
     });
   }

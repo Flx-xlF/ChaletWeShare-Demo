@@ -19,7 +19,9 @@ if (!$user) {
 
 // Opportunistic garbage collection: automatically purge notifications older than 14 days
 try {
-    $pdo->exec("DELETE FROM notifications WHERE created_at < DATE_SUB(NOW(), INTERVAL 14 DAY)");
+    $cutoff = (new DateTime('-14 days', new DateTimeZone('Europe/Zurich')))->format('Y-m-d H:i:s');
+    $cleanupStmt = $pdo->prepare("DELETE FROM notifications WHERE created_at < ?");
+    $cleanupStmt->execute([$cutoff]);
 } catch (\Throwable $e) {
     // Non-critical
 }

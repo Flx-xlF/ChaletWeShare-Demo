@@ -18,6 +18,14 @@ export class ReservationStore {
     this._loadInitial();
   }
 
+  get maintenanceBlocks() {
+    return this.maintenance;
+  }
+
+  set maintenanceBlocks(val) {
+    this.maintenance = val;
+  }
+
   _loadInitial() {
     const rawRes = localStorage.getItem(STORAGE_KEY_RESERVATIONS);
     const rawMaint = localStorage.getItem(STORAGE_KEY_MAINTENANCE);
@@ -61,6 +69,7 @@ export class ReservationStore {
           dateEnd: formatDateISO(dBookedEnd),
           status: 'booked',
           handover_count: 1,
+          handoverCount: 1,
           createdAt: new Date().toISOString()
         },
         {
@@ -122,7 +131,8 @@ export class ReservationStore {
           halfDay: 'afternoon',
           reason: 'Endreinigung Chalet',
           userId: 1,
-          userName: 'Elena'
+          userName: 'Elena',
+          userAvatar: 'swan'
         },
         {
           id: 'maint-demo-2',
@@ -131,7 +141,8 @@ export class ReservationStore {
           halfDay: 'full',
           reason: 'Kaminfeger & Heizungskontrolle',
           userId: 1,
-          userName: 'Elena'
+          userName: 'Elena',
+          userAvatar: 'swan'
         }
       ];
       this._saveMaintenance();

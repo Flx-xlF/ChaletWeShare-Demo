@@ -118,6 +118,9 @@ class ReservationEngine {
             approvals: r.approvals || [],
             vetoes: r.vetoes || [],
             conflictProposal: r.conflict_proposal || null,
+            resolution: r.resolution || null,
+            handover_count: Number(r.handover_count || 0),
+            handoverCount: Number(r.handover_count || 0),
             createdAt: r.created_at
           }));
           reservationStore.userCount = data.user_count || 4;
@@ -125,6 +128,7 @@ class ReservationEngine {
             id: m.id,
             userId: m.user_id,
             userName: m.user_name,
+            userAvatar: m.user_avatar,
             dateStart: m.date_start,
             dateEnd: m.date_end,
             halfDay: m.half_day,

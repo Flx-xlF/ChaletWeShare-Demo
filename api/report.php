@@ -6,13 +6,7 @@
 
 require_once __DIR__ . '/db.php';
 
-header('Content-Type: application/json; charset=UTF-8');
-
-// Allow CORS / preflight requests if needed
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit;
-}
+setCorsHeaders();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);

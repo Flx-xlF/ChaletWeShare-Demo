@@ -20,11 +20,21 @@ export class NotificationToast {
     document.body.appendChild(this.container);
   }
 
-  show(title, message, optionsOrClick = null) {
+  show(titleOrOptions, message = '', optionsOrClick = null) {
+    let title = titleOrOptions;
+    let msg = message;
+    let opts = optionsOrClick;
+
+    if (typeof titleOrOptions === 'object' && titleOrOptions !== null) {
+      title = titleOrOptions.title || '';
+      msg = titleOrOptions.message || '';
+      opts = titleOrOptions;
+    }
+
     const toast = document.createElement('div');
-    const onClick = typeof optionsOrClick === 'function' ? optionsOrClick : optionsOrClick?.onClick;
-    const isError = typeof optionsOrClick === 'object' && optionsOrClick !== null ? !!optionsOrClick.isError : false;
-    const errorCategory = (typeof optionsOrClick === 'object' && optionsOrClick !== null && optionsOrClick.category) ? optionsOrClick.category : 'Sonstiges';
+    const onClick = typeof opts === 'function' ? opts : opts?.onClick;
+    const isError = typeof opts === 'object' && opts !== null ? !!opts.isError : false;
+    const errorCategory = (typeof opts === 'object' && opts !== null && opts.category) ? opts.category : 'Sonstiges';
     
     // Neo-brutalist styling
     Object.assign(toast.style, {

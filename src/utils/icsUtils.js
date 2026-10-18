@@ -98,12 +98,12 @@ export function generateReservationICS({ reservation, user }) {
   const location = 'Chalet Alpenrose, Thunersee, Schweiz';
   const description = [
     `Aufenthalt im Chalet Alpenrose von ${guestName}.`,
-    `Check-in: ab 15:00 Uhr (${startDate})`,
+    `Check-in: ab 14:00 Uhr (${startDate})`,
     `Check-out: bis 11:00 Uhr (${endDate})`,
     `Vor Abreise: Kehricht entsorgen (blaue AVAG-Säcke) und Übergabe-Notiz erfassen.`
   ].join('\\n');
 
-  const dtStart = startDate.replace(/-/g, '') + 'T150000';
+  const dtStart = startDate.replace(/-/g, '') + 'T140000';
   const dtEnd = endDate.replace(/-/g, '') + 'T110000';
 
   const now = new Date();

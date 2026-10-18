@@ -6,6 +6,7 @@
 import { PixelBell, PixelCalendar, PixelWarning, PixelCheck, PixelParty, PixelCancel, PixelChat, PixelWrench, PixelBroom, PixelLeaf, PixelVote, PixelStats, PixelTrash } from '../data/pixelIcons.js';
 import { escapeHtml } from '../utils/htmlUtils.js';
 import { notificationToast } from './notificationToast.js';
+import { confirmDialog } from './confirmDialog.js';
 import { reservationEngine } from '../engine/reservationEngine.js';
 import { reservationStore } from '../engine/reservationStore.js';
 import { activeMicroChatContext } from './microChat.js';
@@ -464,7 +465,7 @@ export class NotificationBadge {
       }
     }
     if (!extractedDate && targetMaintId && typeof reservationStore !== 'undefined') {
-      const mb = reservationStore.maintenanceBlocks.find(m => m.id == targetMaintId);
+      const mb = (reservationStore.maintenance || reservationStore.maintenanceBlocks)?.find(m => m.id == targetMaintId);
       if (mb && (mb.dateStart || mb.date_start)) {
         extractedDate = mb.dateStart || mb.date_start;
       }
@@ -666,7 +667,13 @@ export class NotificationBadge {
     const hasRead = this.notificationsCache.some((n) => n.is_read);
     if (!hasRead) return;
 
-    if (!confirm('Alle bisherigen Mitteilungen unwiderruflich löschen?')) {
+    const confirmed = await confirmDialog({
+      title: 'Verlauf leeren',
+      message: 'Alle bisherigen Mitteilungen unwiderruflich löschen?',
+      confirmLabel: 'Alle löschen',
+      isDanger: true
+    });
+    if (!confirmed) {
       return;
     }
 

@@ -58,13 +58,15 @@ switch ($action) {
 
         // Opportunistically transition pending reservations past veto deadline to booked
         try {
-            $pdo->query("
+            $nowStr = (new DateTime('now', new DateTimeZone('Europe/Zurich')))->format('Y-m-d H:i:s');
+            $updStmt = $pdo->prepare("
                 UPDATE reservations 
                 SET status = 'booked' 
                 WHERE status = 'pending' 
                   AND veto_deadline IS NOT NULL 
-                  AND veto_deadline <= NOW()
+                  AND veto_deadline <= :now_str
             ");
+            $updStmt->execute([':now_str' => $nowStr]);
         } catch (\Throwable $e) {
             // Non-critical, continue
         }

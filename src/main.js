@@ -376,7 +376,9 @@ function renderAppShell(user) {
       onChatClick: async (dateStr, meta) => {
         await navigateToCalendarWithAction(async (cal) => {
           if (meta && meta.type === 'reservation' && meta.targetId) {
-            await cal.openReservation(meta.targetId);
+            await cal.openMicroChatForReservation(meta.targetId);
+          } else if (meta && meta.type === 'maintenance' && meta.targetId) {
+            await cal.openMicroChatForMaintenance(meta.targetId);
           } else if (dateStr) {
             await cal.openDate(dateStr);
           }

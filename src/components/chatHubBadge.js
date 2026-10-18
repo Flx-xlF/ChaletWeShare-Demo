@@ -12,6 +12,7 @@ import { formatDateFriendly } from '../utils/dateUtils.js';
 import { escapeHtml } from '../utils/htmlUtils.js';
 import { reservationStore } from '../engine/reservationStore.js';
 import { reservationEngine } from '../engine/reservationEngine.js';
+import { profileManager } from '../engine/profileManager.js';
 import { confirmDialog } from './confirmDialog.js';
 import { notificationToast } from './notificationToast.js';
 
@@ -204,8 +205,9 @@ export class ChatHubBadge {
   async fetchActiveChats() {
     this.isLoadingChats = true;
     try {
-      const profileId = localStorage.getItem('chalet_profile_id') || '';
-      const syncToken = localStorage.getItem('chalet_sync_token') || '';
+      const activeProfile = profileManager.getActiveProfile();
+      const profileId = this.user?.profile_id || activeProfile?.profile_id || '';
+      const syncToken = this.user?.sync_token || activeProfile?.sync_token || profileManager.getStoredToken(profileId) || '';
       if (!profileId || !syncToken) {
         this.activeChats = [];
         return;

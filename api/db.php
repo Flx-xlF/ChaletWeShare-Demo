@@ -3,6 +3,8 @@
  * ChaletWeShare — Database Connection Singleton & Helpers
  */
 
+date_default_timezone_set('Europe/Zurich');
+
 function getConfig() {
     static $config = null;
     if ($config === null) {
@@ -202,6 +204,9 @@ function initMysqlSchema(PDO $pdo) {
                 target_reservation_id INT DEFAULT NULL,
                 category VARCHAR(50) NOT NULL DEFAULT 'custom',
                 message TEXT NOT NULL,
+                is_acknowledged TINYINT(1) NOT NULL DEFAULT 0,
+                acknowledged_by_name VARCHAR(100) DEFAULT NULL,
+                acknowledged_at DATETIME DEFAULT NULL,
                 created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (reservation_id) REFERENCES reservations(id) ON DELETE CASCADE,
                 FOREIGN KEY (author_user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -408,6 +413,9 @@ function initSqliteSchema(PDO $pdo) {
         target_reservation_id INTEGER DEFAULT NULL REFERENCES reservations(id) ON DELETE SET NULL,
         category TEXT NOT NULL DEFAULT 'custom',
         message TEXT NOT NULL,
+        is_acknowledged INTEGER NOT NULL DEFAULT 0,
+        acknowledged_by_name TEXT DEFAULT NULL,
+        acknowledged_at DATETIME DEFAULT NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 

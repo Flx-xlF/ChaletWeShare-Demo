@@ -1019,10 +1019,10 @@ export class CalendarScreen {
    * @param {string} [fallbackDate]
    */
   async openMaintenance(maintenanceId, fallbackDate = null) {
-    let m = reservationStore.maintenanceBlocks?.find((b) => b.id == maintenanceId);
+    let m = reservationStore.maintenance?.find((b) => b.id == maintenanceId);
     if (!m) {
       await reservationEngine.loadCalendarData();
-      m = reservationStore.maintenanceBlocks?.find((b) => b.id == maintenanceId);
+      m = reservationStore.maintenance?.find((b) => b.id == maintenanceId);
     }
 
     const targetDate = m ? (m.dateStart || m.date_start) : fallbackDate;
@@ -1065,10 +1065,10 @@ export class CalendarScreen {
    * @param {number|string} maintenanceId
    */
   async openMicroChatForMaintenance(maintenanceId) {
-    let m = reservationStore.maintenanceBlocks?.find((b) => b.id == maintenanceId);
+    let m = reservationStore.maintenance?.find((b) => b.id == maintenanceId);
     if (!m) {
       await reservationEngine.loadCalendarData();
-      m = reservationStore.maintenanceBlocks?.find((b) => b.id == maintenanceId);
+      m = reservationStore.maintenance?.find((b) => b.id == maintenanceId);
     }
     if (!m) return;
 
