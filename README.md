@@ -8,7 +8,6 @@
 [![Backend](https://img.shields.io/badge/API-PHP_8.1%2B_%7C_MySQL_%2F_SQLite-777BB4?style=flat-square)](api/schema.sql)
 [![UI Language](https://img.shields.io/badge/UI-de--CH_(Swiss_German)-10b981?style=flat-square)](index.html)
 [![License: MIT](https://img.shields.io/badge/License-MIT-lightgrey?style=flat-square)](LICENSE)
-[![Ko-fi](https://img.shields.io/badge/Ko--fi-Tip_Me-FF5E5B?style=flat-square&logo=kofi)](https://ko-fi.com/flxxlf)
 
 ---
 
